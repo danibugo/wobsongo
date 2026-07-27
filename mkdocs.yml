@@ -1,0 +1,57 @@
+site_name: Wobsongo Documentation
+site_description: Automated Claim Verification Framework for DPGs
+site_url: https://github.com/ImpactScope-organization/wobsongo
+docs_dir: docs/mkdocs
+watch:
+  - docs/mkdocs
+
+# Enable the Material theme
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs # Top-level tabs
+    - navigation.sections # Sidebar sections
+    - content.code.copy # Copy button on code blocks
+
+# Extensions add power (callouts, syntax highlighting, etc.)
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+# Your navigation tree
+nav:
+  - Home:
+      - Overview: index.md
+      - Quick Reference: quick-reference.md
+
+  - Architecture:
+      - Overview: architecture.md
+      - Decisions (ADR):
+          - "ADR 0001: Layered Architecture": ../adr/0001-layered-architecture.md
+
+  - Governance:
+      - Project Charter: governance/PROJECT_CHARTER.md
+      - Contributing: governance/CONTRIBUTING.md
+      - Code of Conduct: governance/CODE_OF_CONDUCT.md

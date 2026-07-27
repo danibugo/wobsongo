@@ -1,0 +1,126 @@
+{
+  "formatters": {
+    "enable": ["gci", "gofmt", "gofumpt", "goimports", "golines"],
+    "exclusions": {
+      "generated": "lax",
+      "paths": ["third_party$", "builtin$", "examples$"]
+    },
+    "settings": {
+      "gofmt": {
+        "rewrite-rules": [
+          {
+            "pattern": "interface{}",
+            "replacement": "any"
+          }
+        ]
+      }
+    }
+  },
+  "linters": {
+    "default": "standard",
+    "enable": [
+      "bodyclose",
+      "contextcheck",
+      "copyloopvar",
+      "dogsled",
+      "dupl",
+      "durationcheck",
+      "errname",
+      "errorlint",
+      "exhaustive",
+      "fatcontext",
+      "funlen",
+      "gocheckcompilerdirectives",
+      "goconst",
+      "gocritic",
+      "gocyclo",
+      "goprintffuncname",
+      "gosec",
+      "lll",
+      "makezero",
+      "misspell",
+      "modernize",
+      "nakedret",
+      "nilerr",
+      "nilnil",
+      "noctx",
+      "nolintlint",
+      "perfsprint",
+      "prealloc",
+      "predeclared",
+      "reassign",
+      "revive",
+      "rowserrcheck",
+      "sqlclosecheck",
+      "testifylint",
+      "thelper",
+      "tparallel",
+      "unconvert",
+      "unparam",
+      "wastedassign",
+      "whitespace"
+    ],
+    "exclusions": {
+      "generated": "lax",
+      "paths": ["third_party$", "builtin$", "examples$"],
+      "presets": [
+        "comments",
+        "common-false-positives",
+        "legacy",
+        "std-error-handling"
+      ]
+    },
+    "settings": {
+      "dupl": {
+        "threshold": 150
+      },
+      "errorlint": {
+        "asserts": false
+      },
+      "funlen": {
+        "ignore-comments": true,
+        "lines": 150,
+        "statements": 50
+      },
+      "goconst": {
+        "min-len": 3,
+        "min-occurrences": 3
+      },
+      "gocritic": {
+        "enabled-tags": ["diagnostic", "performance"]
+      },
+      "gocyclo": {
+        "min-complexity": 20
+      },
+      "gosec": {
+        "excludes": ["G101"]
+      },
+      "lll": {
+        "line-length": 300
+      },
+      "misspell": {
+        "locale": "US"
+      },
+      "nolintlint": {
+        "allow-unused": false,
+        "require-explanation": false,
+        "require-specific": false
+      },
+      "revive": {
+        "rules": [
+          {
+            "disabled": true,
+            "name": "unexported-return"
+          },
+          {
+            "name": "unused-parameter"
+          }
+        ]
+      }
+    }
+  },
+  "run": {
+    "tests": false
+  },
+  "version": "2"
+}

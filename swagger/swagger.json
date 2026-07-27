@@ -1,0 +1,1225 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/api/v1/claims/check": {
+            "post": {
+                "description": "Checks a claim (e.g. from a video transcript) against the knowledge base and returns a cited verdict. Out-of-scope input (not health-related) is a normal 200 response with in_scope=false, not an error.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "claims"
+                ],
+                "summary": "Check a claim",
+                "parameters": [
+                    {
+                        "description": "Check Claim Form",
+                        "name": "form",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CheckClaimDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClaimCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/documents": {
+            "get": {
+                "description": "Retrieves a paginated list of documents.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "List documents",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "per_page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PaginationResults-model_Document"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Ingests a new document into the knowledge base.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Create a document",
+                "parameters": [
+                    {
+                        "description": "Create Document Form",
+                        "name": "form",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateDocumentDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Document"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/documents/{id}": {
+            "get": {
+                "description": "Retrieves a single document by its ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Get a document by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Document"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates a document's descriptive metadata.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Update a document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update Document Form",
+                        "name": "form",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateDocumentDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Document"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a document by its ID.",
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Delete a document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/media/presigned-url": {
+            "get": {
+                "description": "Generate a presigned GET URL for accessing uploaded media files by S3 key.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Get presigned GET URL for media access",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "S3 object key (e.g., documents/abc123.pdf)",
+                        "name": "s3_key",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 900,
+                        "description": "TTL in seconds (default: 900, max: 86400)",
+                        "name": "ttl",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PresignedURL"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid S3 key",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/media/upload": {
+            "get": {
+                "description": "Generate a presigned POST URL for uploading media files.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "media"
+                ],
+                "summary": "Get presigned POST URL for media upload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Media upload intent",
+                        "name": "intent",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filename to be uploaded",
+                        "name": "filename",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Content type of the file",
+                        "name": "content_type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.POSTUploadPolicy"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.CheckClaimDTO": {
+            "type": "object",
+            "required": [
+                "text"
+            ],
+            "properties": {
+                "text": {
+                    "description": "Text is the claim or message to check — may be a direct question, a\ncasual claim, or a sentence pulled from a video transcript.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CitationResponse": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "description": "DocumentID is the source document this evidence came from.",
+                    "type": "string"
+                },
+                "index": {
+                    "description": "Index is the same 0-based number the judge's Reasoning text references\ninline as \"[N]\" — use it to link a prose citation back to this entry.",
+                    "type": "integer"
+                },
+                "source": {
+                    "description": "Source is \"chunk\" or \"fact\".",
+                    "type": "string"
+                },
+                "text": {
+                    "description": "Text is the matched text — a chunk's text, or a fact's subject-predicate-object.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ClaimCheckResponse": {
+            "type": "object",
+            "properties": {
+                "formatted_message": {
+                    "description": "FormattedMessage is a human-facing, color-coded (emoji-per-verdict)\nrendering of OverallSummary and every sub-claim's verdict/reasoning —\nmeant to be displayed as-is by a chat client. Plain text, no\nHTML/Markdown markup. Empty when InScope is false.",
+                    "type": "string"
+                },
+                "in_scope": {
+                    "description": "InScope is false if the input wasn't a health-related inquiry at all —\nthis system doesn't take inquiries unrelated to health.",
+                    "type": "boolean"
+                },
+                "overall_summary": {
+                    "description": "OverallSummary is a short rollup across every sub-claim's verdict.\nEmpty when InScope is false.",
+                    "type": "string"
+                },
+                "refusal_reason": {
+                    "description": "RefusalReason explains why InScope is false. Empty when InScope is true.",
+                    "type": "string"
+                },
+                "sub_claims": {
+                    "description": "SubClaims is the per-sub-claim breakdown. Empty when InScope is false.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SubClaimResponse"
+                    }
+                }
+            }
+        },
+        "dto.CreateDocumentDTO": {
+            "type": "object",
+            "required": [
+                "file_key",
+                "filename",
+                "filesize",
+                "filetype",
+                "language",
+                "page_count",
+                "sha256",
+                "title"
+            ],
+            "properties": {
+                "file_key": {
+                    "description": "FileKey is the object storage key (e.g., S3/MinIO) where the document file was uploaded.",
+                    "type": "string"
+                },
+                "filename": {
+                    "description": "Filename is the name of the document file.",
+                    "type": "string"
+                },
+                "filesize": {
+                    "description": "Filesize is the size of the document file in bytes.",
+                    "type": "integer"
+                },
+                "filetype": {
+                    "description": "Filetype is the mime type of the document file (e.g., \"application/pdf\", \"text/plain\").",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Language is the document's language (\"en\" or \"fr\") — required, not\nauto-detected, since French must be first-class for this deployment\nand silently defaulting risks mis-tagging a document.",
+                    "type": "string",
+                    "enum": [
+                        "en",
+                        "fr"
+                    ]
+                },
+                "page_count": {
+                    "description": "PageCount is the number of pages in the document.",
+                    "type": "integer"
+                },
+                "publication_year": {
+                    "description": "PublicationYear is the year the document was published.",
+                    "type": "integer"
+                },
+                "publisher_name": {
+                    "description": "PublisherName is the name of the publisher of the document.",
+                    "type": "string"
+                },
+                "sha256": {
+                    "description": "SHA256 is the SHA256 hash of the document content.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title is the title of the document.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PaginationResults-model_Document": {
+            "type": "object",
+            "required": [
+                "page",
+                "per_page",
+                "total_items"
+            ],
+            "properties": {
+                "items": {
+                    "description": "Items contains the paginated data items",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Document"
+                    }
+                },
+                "page": {
+                    "description": "Page is the current page number",
+                    "type": "integer"
+                },
+                "per_page": {
+                    "description": "PerPage is the number of items per page",
+                    "type": "integer",
+                    "maximum": 100
+                },
+                "total_items": {
+                    "description": "TotalItems is the total number of items available",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.PresignedURL": {
+            "type": "object",
+            "properties": {
+                "presigned_url": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SubClaimResponse": {
+            "type": "object",
+            "properties": {
+                "citations": {
+                    "description": "Citations are the specific pieces of knowledge-base evidence the\nverdict is based on. Empty whenever Verdict is insufficient_evidence.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CitationResponse"
+                    }
+                },
+                "claim": {
+                    "description": "Claim is the normalized sub-claim text that was actually checked.",
+                    "type": "string"
+                },
+                "reasoning": {
+                    "description": "Reasoning is the judge's explanation for the verdict.",
+                    "type": "string"
+                },
+                "recommend_medical_consult": {
+                    "description": "RecommendMedicalConsult is true whenever the claim's subject matter\nwarrants recommending a real doctor — this system provides quick\naccess to reliable information, it does not replace one.",
+                    "type": "boolean"
+                },
+                "severity": {
+                    "description": "Severity is one of: routine, serious, emergency.",
+                    "type": "string"
+                },
+                "verdict": {
+                    "description": "Verdict is one of: supported, contradicted, partially_supported, mixed, insufficient_evidence.\ninsufficient_evidence never implies the claim itself is right or wrong\n— only that the knowledge base had nothing relevant to check it against.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateDocumentDTO": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "publication_year": {
+                    "description": "PublicationYear is the year the document was published.",
+                    "type": "integer"
+                },
+                "publisher_name": {
+                    "description": "PublisherName is the name of the publisher of the document.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title is the title of the document.",
+                    "type": "string"
+                }
+            }
+        },
+        "model.APIResponse": {
+            "type": "object",
+            "required": [
+                "request_id",
+                "status"
+            ],
+            "properties": {
+                "data": {},
+                "error": {
+                    "type": "string"
+                },
+                "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "status": {
+                    "type": "integer",
+                    "maximum": 599,
+                    "minimum": 100
+                }
+            }
+        },
+        "model.Document": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "filename",
+                "filesize",
+                "filetype",
+                "id",
+                "language",
+                "modified_at",
+                "page_count",
+                "sha256",
+                "title"
+            ],
+            "properties": {
+                "created_at": {
+                    "description": "CreatedAt is the timestamp when the document was created.",
+                    "type": "string"
+                },
+                "file_url_presigned": {
+                    "description": "FileURLPresigned is the presigned URL for accessing the document file.",
+                    "type": "string"
+                },
+                "filename": {
+                    "description": "Filename is the name of the document file.",
+                    "type": "string"
+                },
+                "filesize": {
+                    "description": "Filesize is the size of the document file in bytes.",
+                    "type": "integer"
+                },
+                "filetype": {
+                    "description": "Filetype is the mime type of the document file (e.g., \"application/pdf\", \"text/plain\").",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is the unique identifier for the document.",
+                    "type": "string"
+                },
+                "ingested_at": {
+                    "description": "IngestedAt is the timestamp when the document was ingested into the system.",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "Language is the language this document is written in, set explicitly\nat ingestion (e.g. `wob document insert --language fr`) rather than\nauto-detected — the cheapest, most reliable option for now.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Language"
+                        }
+                    ]
+                },
+                "modified_at": {
+                    "description": "ModifiedAt is the timestamp when the document was last modified.",
+                    "type": "string"
+                },
+                "page_count": {
+                    "description": "PageCount is the number of pages in the document (if applicable).",
+                    "type": "integer"
+                },
+                "publication_year": {
+                    "description": "PublicationYear is the year the document was published.",
+                    "type": "integer"
+                },
+                "publisher_name": {
+                    "description": "PublisherName is the name of the publisher of the document.",
+                    "type": "string"
+                },
+                "sha256": {
+                    "description": "SHA256 is the SHA256 hash of the document content.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title is the title of the document.",
+                    "type": "string"
+                }
+            }
+        },
+        "model.Language": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "LanguageEnglish",
+                "LanguageFrench"
+            ]
+        },
+        "model.POSTUploadPolicy": {
+            "type": "object",
+            "required": [
+                "formFields",
+                "prefix",
+                "url"
+            ],
+            "properties": {
+                "formFields": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "example": "avatars/"
+                },
+                "url": {
+                    "type": "string",
+                    "example": "https://s3.planetleague.co.uk/bucket/key"
+                }
+            }
+        }
+    }
+}

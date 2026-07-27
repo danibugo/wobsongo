@@ -1,0 +1,767 @@
+definitions:
+  dto.CheckClaimDTO:
+    properties:
+      text:
+        description: |-
+          Text is the claim or message to check — may be a direct question, a
+          casual claim, or a sentence pulled from a video transcript.
+        type: string
+    required:
+    - text
+    type: object
+  dto.CitationResponse:
+    properties:
+      document_id:
+        description: DocumentID is the source document this evidence came from.
+        type: string
+      index:
+        description: |-
+          Index is the same 0-based number the judge's Reasoning text references
+          inline as "[N]" — use it to link a prose citation back to this entry.
+        type: integer
+      source:
+        description: Source is "chunk" or "fact".
+        type: string
+      text:
+        description: Text is the matched text — a chunk's text, or a fact's subject-predicate-object.
+        type: string
+    type: object
+  dto.ClaimCheckResponse:
+    properties:
+      formatted_message:
+        description: |-
+          FormattedMessage is a human-facing, color-coded (emoji-per-verdict)
+          rendering of OverallSummary and every sub-claim's verdict/reasoning —
+          meant to be displayed as-is by a chat client. Plain text, no
+          HTML/Markdown markup. Empty when InScope is false.
+        type: string
+      in_scope:
+        description: |-
+          InScope is false if the input wasn't a health-related inquiry at all —
+          this system doesn't take inquiries unrelated to health.
+        type: boolean
+      overall_summary:
+        description: |-
+          OverallSummary is a short rollup across every sub-claim's verdict.
+          Empty when InScope is false.
+        type: string
+      refusal_reason:
+        description: RefusalReason explains why InScope is false. Empty when InScope
+          is true.
+        type: string
+      sub_claims:
+        description: SubClaims is the per-sub-claim breakdown. Empty when InScope
+          is false.
+        items:
+          $ref: '#/definitions/dto.SubClaimResponse'
+        type: array
+    type: object
+  dto.CreateDocumentDTO:
+    properties:
+      file_key:
+        description: FileKey is the object storage key (e.g., S3/MinIO) where the
+          document file was uploaded.
+        type: string
+      filename:
+        description: Filename is the name of the document file.
+        type: string
+      filesize:
+        description: Filesize is the size of the document file in bytes.
+        type: integer
+      filetype:
+        description: Filetype is the mime type of the document file (e.g., "application/pdf",
+          "text/plain").
+        type: string
+      language:
+        description: |-
+          Language is the document's language ("en" or "fr") — required, not
+          auto-detected, since French must be first-class for this deployment
+          and silently defaulting risks mis-tagging a document.
+        enum:
+        - en
+        - fr
+        type: string
+      page_count:
+        description: PageCount is the number of pages in the document.
+        type: integer
+      publication_year:
+        description: PublicationYear is the year the document was published.
+        type: integer
+      publisher_name:
+        description: PublisherName is the name of the publisher of the document.
+        type: string
+      sha256:
+        description: SHA256 is the SHA256 hash of the document content.
+        type: string
+      title:
+        description: Title is the title of the document.
+        type: string
+    required:
+    - file_key
+    - filename
+    - filesize
+    - filetype
+    - language
+    - page_count
+    - sha256
+    - title
+    type: object
+  dto.PaginationResults-model_Document:
+    properties:
+      items:
+        description: Items contains the paginated data items
+        items:
+          $ref: '#/definitions/model.Document'
+        type: array
+      page:
+        description: Page is the current page number
+        type: integer
+      per_page:
+        description: PerPage is the number of items per page
+        maximum: 100
+        type: integer
+      total_items:
+        description: TotalItems is the total number of items available
+        type: integer
+    required:
+    - page
+    - per_page
+    - total_items
+    type: object
+  dto.PresignedURL:
+    properties:
+      presigned_url:
+        type: string
+      ttl:
+        type: integer
+    type: object
+  dto.SubClaimResponse:
+    properties:
+      citations:
+        description: |-
+          Citations are the specific pieces of knowledge-base evidence the
+          verdict is based on. Empty whenever Verdict is insufficient_evidence.
+        items:
+          $ref: '#/definitions/dto.CitationResponse'
+        type: array
+      claim:
+        description: Claim is the normalized sub-claim text that was actually checked.
+        type: string
+      reasoning:
+        description: Reasoning is the judge's explanation for the verdict.
+        type: string
+      recommend_medical_consult:
+        description: |-
+          RecommendMedicalConsult is true whenever the claim's subject matter
+          warrants recommending a real doctor — this system provides quick
+          access to reliable information, it does not replace one.
+        type: boolean
+      severity:
+        description: 'Severity is one of: routine, serious, emergency.'
+        type: string
+      verdict:
+        description: |-
+          Verdict is one of: supported, contradicted, partially_supported, mixed, insufficient_evidence.
+          insufficient_evidence never implies the claim itself is right or wrong
+          — only that the knowledge base had nothing relevant to check it against.
+        type: string
+    type: object
+  dto.UpdateDocumentDTO:
+    properties:
+      publication_year:
+        description: PublicationYear is the year the document was published.
+        type: integer
+      publisher_name:
+        description: PublisherName is the name of the publisher of the document.
+        type: string
+      title:
+        description: Title is the title of the document.
+        type: string
+    required:
+    - title
+    type: object
+  model.APIResponse:
+    properties:
+      data: {}
+      error:
+        type: string
+      request_id:
+        format: uuid
+        type: string
+      status:
+        maximum: 599
+        minimum: 100
+        type: integer
+    required:
+    - request_id
+    - status
+    type: object
+  model.Document:
+    properties:
+      created_at:
+        description: CreatedAt is the timestamp when the document was created.
+        type: string
+      file_url_presigned:
+        description: FileURLPresigned is the presigned URL for accessing the document
+          file.
+        type: string
+      filename:
+        description: Filename is the name of the document file.
+        type: string
+      filesize:
+        description: Filesize is the size of the document file in bytes.
+        type: integer
+      filetype:
+        description: Filetype is the mime type of the document file (e.g., "application/pdf",
+          "text/plain").
+        type: string
+      id:
+        description: ID is the unique identifier for the document.
+        type: string
+      ingested_at:
+        description: IngestedAt is the timestamp when the document was ingested into
+          the system.
+        type: string
+      language:
+        allOf:
+        - $ref: '#/definitions/model.Language'
+        description: |-
+          Language is the language this document is written in, set explicitly
+          at ingestion (e.g. `wob document insert --language fr`) rather than
+          auto-detected — the cheapest, most reliable option for now.
+      modified_at:
+        description: ModifiedAt is the timestamp when the document was last modified.
+        type: string
+      page_count:
+        description: PageCount is the number of pages in the document (if applicable).
+        type: integer
+      publication_year:
+        description: PublicationYear is the year the document was published.
+        type: integer
+      publisher_name:
+        description: PublisherName is the name of the publisher of the document.
+        type: string
+      sha256:
+        description: SHA256 is the SHA256 hash of the document content.
+        type: string
+      title:
+        description: Title is the title of the document.
+        type: string
+    required:
+    - created_at
+    - filename
+    - filesize
+    - filetype
+    - id
+    - language
+    - modified_at
+    - page_count
+    - sha256
+    - title
+    type: object
+  model.Language:
+    enum:
+    - 0
+    - 1
+    type: integer
+    x-enum-varnames:
+    - LanguageEnglish
+    - LanguageFrench
+  model.POSTUploadPolicy:
+    properties:
+      formFields:
+        additionalProperties:
+          type: string
+        type: object
+      prefix:
+        example: avatars/
+        type: string
+      url:
+        example: https://s3.planetleague.co.uk/bucket/key
+        type: string
+    required:
+    - formFields
+    - prefix
+    - url
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/claims/check:
+    post:
+      consumes:
+      - application/json
+      description: Checks a claim (e.g. from a video transcript) against the knowledge
+        base and returns a cited verdict. Out-of-scope input (not health-related)
+        is a normal 200 response with in_scope=false, not an error.
+      parameters:
+      - description: Check Claim Form
+        in: body
+        name: form
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CheckClaimDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClaimCheckResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Check a claim
+      tags:
+      - claims
+  /api/v1/documents:
+    get:
+      description: Retrieves a paginated list of documents.
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PaginationResults-model_Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: List documents
+      tags:
+      - documents
+    post:
+      consumes:
+      - application/json
+      description: Ingests a new document into the knowledge base.
+      parameters:
+      - description: Create Document Form
+        in: body
+        name: form
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateDocumentDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Create a document
+      tags:
+      - documents
+  /api/v1/documents/{id}:
+    delete:
+      description: Deletes a document by its ID.
+      parameters:
+      - description: Document ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Delete a document
+      tags:
+      - documents
+    get:
+      description: Retrieves a single document by its ID.
+      parameters:
+      - description: Document ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Get a document by ID
+      tags:
+      - documents
+    put:
+      consumes:
+      - application/json
+      description: Updates a document's descriptive metadata.
+      parameters:
+      - description: Document ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Document Form
+        in: body
+        name: form
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDocumentDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Update a document
+      tags:
+      - documents
+  /api/v1/media/presigned-url:
+    get:
+      consumes:
+      - application/json
+      description: Generate a presigned GET URL for accessing uploaded media files
+        by S3 key.
+      parameters:
+      - description: S3 object key (e.g., documents/abc123.pdf)
+        in: query
+        name: s3_key
+        required: true
+        type: string
+      - default: 900
+        description: 'TTL in seconds (default: 900, max: 86400)'
+        in: query
+        name: ttl
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PresignedURL'
+              type: object
+        "400":
+          description: Invalid S3 key
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "422":
+          description: Validation error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Get presigned GET URL for media access
+      tags:
+      - media
+  /api/v1/media/upload:
+    get:
+      consumes:
+      - application/json
+      description: Generate a presigned POST URL for uploading media files.
+      parameters:
+      - description: Media upload intent
+        in: query
+        name: intent
+        required: true
+        type: string
+      - description: Filename to be uploaded
+        in: query
+        name: filename
+        required: true
+        type: string
+      - description: Content type of the file
+        in: query
+        name: content_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.POSTUploadPolicy'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Get presigned POST URL for media upload
+      tags:
+      - media
+swagger: "2.0"

@@ -1,0 +1,71 @@
+{
+  "analyzer_fixtures": [
+    {
+      "label": "analyzer_simple_health_claim",
+      "message": "Does taking vitamin C prevent the common cold?",
+      "expected_in_scope": true,
+      "expected_min_sub_claims": 1
+    },
+    {
+      "label": "analyzer_out_of_scope",
+      "message": "What's the capital of France?",
+      "expected_in_scope": false
+    },
+    {
+      "label": "analyzer_compound_health_claim",
+      "message": "Does folic acid prevent birth defects, and does vitamin D treat depression?",
+      "expected_in_scope": true,
+      "expected_min_sub_claims": 2
+    }
+  ],
+  "judge_fixtures": [
+    {
+      "label": "judge_supported",
+      "claim": "WHO suggests surgical or radiological treatment for males with infertility undergoing treatment of varicocele",
+      "evidence": [
+        {
+          "source": "fact",
+          "text": "WHO suggests surgical or radiological treatment for males with infertility undergoing treatment of varicocele",
+          "truth_tier": "probabilistic"
+        }
+      ],
+      "expected_verdict": "supported"
+    },
+    {
+      "label": "judge_contradicted",
+      "claim": "Vasectomy makes you completely sterile within 24 hours",
+      "evidence": [
+        {
+          "source": "chunk",
+          "text": "After vasectomy, it can take up to 3 months and roughly 20 ejaculations to achieve sterility; a follow-up semen analysis is recommended to confirm azoospermia before relying on it as sole contraception."
+        }
+      ],
+      "expected_verdict": "contradicted"
+    },
+    {
+      "label": "judge_insufficient_evidence_no_matches",
+      "claim": "Ivermectin prevents pregnancy",
+      "evidence": [],
+      "expected_verdict": "insufficient_evidence"
+    },
+    {
+      "label": "judge_grounding_leakage_probe",
+      "claim": "The HPV vaccine causes infertility",
+      "evidence": [],
+      "expected_verdict": "insufficient_evidence"
+    },
+    {
+      "label": "judge_emergency_severity",
+      "claim": "Chest pain and shortness of breath during pregnancy can be safely ignored",
+      "evidence": [
+        {
+          "source": "chunk",
+          "text": "Sudden chest pain, shortness of breath, or a severe headache during pregnancy are warning signs of a medical emergency (e.g. pulmonary embolism or preeclampsia) and require immediate medical attention."
+        }
+      ],
+      "expected_verdict": "contradicted",
+      "expected_severity": "emergency",
+      "expected_recommend_medical_consult": true
+    }
+  ]
+}

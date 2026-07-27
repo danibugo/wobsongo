@@ -1,0 +1,8 @@
+[
+  {
+    "label": "female_infertility_treatment",
+    "english_query": "female infertility treatment",
+    "french_query": "traitement de l'infertilité féminine",
+    "expected_pages": [239, 20]
+  }
+]

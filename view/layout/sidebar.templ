@@ -1,0 +1,125 @@
+package layout
+
+import (
+	"strings"
+
+	lucide "github.com/bryanvaz/go-templ-lucide-icons/icons"
+	"github.com/kairosedubf/wobsongo/components/avatar"
+	"github.com/kairosedubf/wobsongo/components/dropdown"
+	"github.com/kairosedubf/wobsongo/components/sidebar"
+)
+
+// initials returns up to 2 uppercase initials from a name.
+func initials(name string) string {
+	words := strings.Fields(name)
+	switch len(words) {
+	case 0:
+		return "?"
+	case 1:
+		if len(name) == 0 {
+			return "?"
+		}
+		return strings.ToUpper(name[:1])
+	default:
+		return strings.ToUpper(words[0][:1] + words[len(words)-1][:1])
+	}
+}
+
+templ navItem(href, label string, active bool) {
+	@sidebar.MenuItem() {
+		@sidebar.MenuButton(sidebar.MenuButtonProps{
+			Href:     href,
+			IsActive: active,
+			Tooltip:  label,
+		}) {
+			{ children... }
+			<span>{ label }</span>
+		}
+	}
+}
+
+templ Sidebar(data AppLayoutData) {
+	@sidebar.Sidebar(sidebar.Props{
+		Collapsible: sidebar.CollapsibleIcon,
+		Collapsed:   data.SidebarCollapsed,
+		Variant:     sidebar.VariantFloating,
+		Class:       "text-sidebar-foreground",
+	}) {
+		@sidebar.Header() {
+			<div class="flex items-center justify-between px-1 gap-1 group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:flex-col">
+				<div class="flex items-center gap-2 min-w-0 group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:hidden">
+					<span class="font-semibold text-base tracking-tight whitespace-nowrap">
+						wobsongo
+					</span>
+				</div>
+				@sidebar.Trigger()
+			</div>
+		}
+		@sidebar.Content() {
+			@sidebar.Group(sidebar.GroupProps{Class: "py-1"}) {
+				@sidebar.Menu() {
+					@navItem("/dashboard", "Dashboard", strings.HasPrefix(data.CurrentPath, "/dashboard")) {
+						@lucide.LayoutDashboard(templ.Attributes{"class": "size-4 shrink-0"})
+					}
+				}
+			}
+		}
+		@sidebar.Footer() {
+			@sidebar.Menu() {
+				@sidebar.MenuItem() {
+					@dropdown.Dropdown() {
+						@dropdown.Trigger() {
+							@sidebar.MenuButton(sidebar.MenuButtonProps{
+								Size: sidebar.MenuButtonSizeLg,
+							}) {
+								@avatar.Avatar(avatar.Props{Class: "size-8 rounded-lg"}) {
+									@avatar.Fallback(avatar.FallbackProps{Class: "rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold"}) {
+										{ initials(data.User.Name) }
+									}
+								}
+								<div class="grid flex-1 text-left text-sm leading-tight">
+									<span class="truncate font-medium">{ data.User.Name }</span>
+									<span class="truncate text-xs capitalize">{ data.User.Role.String() }</span>
+								</div>
+								@lucide.ChevronsUpDown(templ.Attributes{"class": "ml-auto size-4"})
+							}
+						}
+						@dropdown.Content(dropdown.ContentProps{
+							Class:     "w-56",
+							Placement: dropdown.PlacementTopStart,
+						}) {
+							@dropdown.Label() {
+								{ data.User.Name }
+							}
+							@dropdown.Separator()
+							@dropdown.Item(dropdown.ItemProps{
+								Attributes:   templ.Attributes{"onclick": "toggleDark()"},
+								PreventClose: true,
+							}) {
+								<span class="flex items-center">
+									<span class="mr-2 block dark:hidden">
+										@lucide.Moon(templ.Attributes{"class": "size-4"})
+									</span>
+									<span class="mr-2 hidden dark:block">
+										@lucide.Sun(templ.Attributes{"class": "size-4"})
+									</span>
+									Toggle theme
+								</span>
+							}
+							@dropdown.Separator()
+							<form method="POST" action="/logout">
+								<input type="hidden" name="_csrf" value={ data.CSRFToken }/>
+								@dropdown.Item() {
+									<span class="flex items-center">
+										@lucide.LogOut(templ.Attributes{"class": "size-4 mr-2"})
+										Log out
+									</span>
+								}
+							</form>
+						}
+					}
+				}
+			}
+		}
+	}
+}

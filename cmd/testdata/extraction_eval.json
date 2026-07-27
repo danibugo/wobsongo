@@ -1,0 +1,42 @@
+[
+  {
+    "label": "clinical_recommendation",
+    "text": "For males with infertility and clinical varicocele, WHO suggests surgical or radiological treatment over expectant management. (Conditional recommendation, low certainty of evidence)",
+    "document_title": "Guideline for the prevention, diagnosis and treatment of infertility",
+    "publisher_name": "World Health Organization (WHO)",
+    "publication_year": 2023,
+    "expected_category": "clinical"
+  },
+  {
+    "label": "clinical_null_finding",
+    "text": "For males with infertility and one or more semen parameters that are outside the WHO reference ranges who are attempting to achieve pregnancy with or without medically assisted reproduction, the WHO infertility Guideline Development Group (GDG) did not make a recommendation for or against the use of antioxidant supplements.",
+    "document_title": "Guideline for the prevention, diagnosis and treatment of infertility",
+    "publisher_name": "World Health Organization (WHO)",
+    "publication_year": 2023,
+    "expected_category": "clinical"
+  },
+  {
+    "label": "metadata_authorship",
+    "text": "Treatment of female infertility: Amal Benbella (Reproductive Health Hospital, Ibn Sina University Hospital, Rabat, Morocco), Edgar Mocanu (Department of Obstetrics and Gynecology, RCSI University of Medicine and Health Sciences, Dublin, Ireland), Sasha Ottey (PCOS Challenge: The National Polycystic Ovary Syndrome Association, Atlanta, USA) and Maria P. Velez (Division of Reproductive Endocrinology and Infertility, McGill University, Montreal, Canada).",
+    "document_title": "Guideline for the prevention, diagnosis and treatment of infertility",
+    "publisher_name": "World Health Organization (WHO)",
+    "publication_year": 2023,
+    "expected_category": "metadata"
+  },
+  {
+    "label": "metadata_bibliographic",
+    "text": "Zegers-Hochschild F, Adamson GD, de Mouzon J, Ishihara O, Mansour R, Nygren K et al. The international committee for monitoring assisted reproductive technology (ICMART) and the World Health Organization (WHO) revised glossary on ART terminology, 2009. Hum Reprod. 2009;24(11):2683-7 (https://doi.org/10.1016/j. fertnstert.2009.09.009).",
+    "document_title": "Guideline for the prevention, diagnosis and treatment of infertility",
+    "publisher_name": "World Health Organization (WHO)",
+    "publication_year": 2023,
+    "expected_category": "metadata"
+  },
+  {
+    "label": "metadata_document_structure",
+    "text": "This chapter provides background information on infertility, including its epidemiology and the need to strengthen global efforts to prevent, diagnose and treat it.",
+    "document_title": "Guideline for the prevention, diagnosis and treatment of infertility",
+    "publisher_name": "World Health Organization (WHO)",
+    "publication_year": 2023,
+    "expected_category": "metadata"
+  }
+]

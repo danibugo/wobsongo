@@ -1,0 +1,34 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "./sql/migrations"
+    queries: "./sql/queries"
+    gen:
+      go:
+        package: "db"
+        sql_package: "pgx/v5"
+        out: "db"
+        overrides:
+          - db_type: "timestamptz"
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "uuid"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          # embedding is nullable, and pgvector-go's Vector panics on Scan
+          # when the source is NULL (confirmed empirically) — a column-level
+          # override forces the pointer form so pgx's generic nil-pointer
+          # handling applies instead (verified: nil <-> SQL NULL round-trips
+          # correctly with *pgvector.Vector, but not with the bare value type).
+          - column: "document_chunks.embedding"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              type: "Vector"
+              pointer: true
+          - column: "atomic_knowledge.embedding"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              type: "Vector"
+              pointer: true

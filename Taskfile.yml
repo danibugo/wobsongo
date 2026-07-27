@@ -1,0 +1,36 @@
+version: "3"
+
+tasks:
+  setup-static:
+    desc: One-time setup — copy JS to ui/static/js and compile CSS (run before first go build)
+    cmds:
+      - mkdir -p ui/static/css ui/static/js
+      - cp assets/js/*.min.js ui/static/js/
+      - tailwindcss -i ./assets/css/input.css -o ./ui/static/css/output.css --minify
+
+  templ:
+    desc: Watch .templ/.go files, regenerate, restart the dev server, and auto-reload the browser (proxy on :7331 -> :8000)
+    cmds:
+      - go tool templ generate --watch --proxy="http://localhost:8000" --cmd="go run -tags dev . -e .env serve" --open-browser=false
+
+  tailwind:
+    desc: Watch Tailwind CSS and recompile to ui/static/css/output.css
+    cmds:
+      - tailwindcss -i ./assets/css/input.css -o ./ui/static/css/output.css --watch
+
+  dev:
+    desc: |
+      Full browser-auto-reload dev flow — runs Tailwind watch + templ watch (which itself
+      builds and runs the server via `go run`, restarting on any .go/.templ change).
+      Browse via http://localhost:7331 (the templ proxy), not :8000, to get live reload.
+      This is an ALTERNATIVE to `make dev` (air) — don't run both at once, they'd fight
+      over port 8000. Use this task when you want auto-reload; use `make dev` when you
+      just want the plain server with manual refresh (e.g. to also get swag doc regen).
+    deps: [tailwind, templ]
+
+  build:
+    desc: Production build — compile CSS, generate templ, then build the binary with embedded assets
+    cmds:
+      - tailwindcss -i ./assets/css/input.css -o ./ui/static/css/output.css --minify
+      - go tool templ generate
+      - CGO_ENABLED=0 go build -o ./tmp/wscore .

@@ -1,0 +1,67 @@
+package layout
+
+import (
+	"github.com/kairosedubf/wobsongo/components/avatar"
+	"github.com/kairosedubf/wobsongo/components/breadcrumb"
+	"github.com/kairosedubf/wobsongo/components/dropdown"
+	"github.com/kairosedubf/wobsongo/components/sidebar"
+)
+
+templ App(data AppLayoutData) {
+	<!DOCTYPE html>
+	<html lang="en" class="h-full">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ data.PageTitle } — wobsongo</title>
+			<script src="/static/js/theme.js"></script>
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+			<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
+			<link rel="stylesheet" href="/static/css/output.css"/>
+		</head>
+		<body class="h-full overflow-hidden bg-background">
+			@sidebar.Script()
+			@dropdown.Script()
+			@avatar.Script()
+			@sidebar.Layout(sidebar.LayoutProps{Class: "h-full"}) {
+				@Sidebar(data)
+				@sidebar.Inset(sidebar.InsetProps{
+					Class: "md:m-2 md:ml-0 md:rounded-lg md:border md:shadow-sm overflow-hidden",
+				}) {
+					<div class="flex h-full flex-col min-w-0">
+						<header class="h-16 shrink-0 flex items-center justify-between px-6 border-b bg-card">
+							<div>
+								<h1 class="text-xl font-semibold leading-tight">{ data.PageTitle }</h1>
+								if data.Subtitle != "" {
+									<p class="text-xs text-muted-foreground">{ data.Subtitle }</p>
+								}
+								if len(data.Breadcrumbs) > 0 {
+									@breadcrumb.Breadcrumb() {
+										@breadcrumb.List() {
+											for i, c := range data.Breadcrumbs {
+												@breadcrumb.Item(breadcrumb.ItemProps{Current: i == len(data.Breadcrumbs)-1}) {
+													if c.Href != "" {
+														@breadcrumb.Link(breadcrumb.LinkProps{Href: c.Href}) { { c.Label } }
+													} else {
+														@breadcrumb.Page() { { c.Label } }
+													}
+												}
+												if i < len(data.Breadcrumbs)-1 {
+													@breadcrumb.Separator()
+												}
+											}
+										}
+									}
+								}
+							</div>
+						</header>
+						<div class="flex-1 overflow-auto p-6">
+							{ children... }
+						</div>
+					</div>
+				}
+			}
+		</body>
+	</html>
+}

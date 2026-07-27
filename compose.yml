@@ -1,0 +1,98 @@
+name: "wobsongocore"
+services:
+  postgres:
+    # pgvector/pgvector ships the same postgres:18 base plus the pgvector
+    # extension pre-installed (document_chunks.embedding needs `CREATE
+    # EXTENSION vector`, which plain postgres:18-alpine can't provide).
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_PASSWORD: "LocalDev123"
+      POSTGRES_USER: "wobsongocore"
+      POSTGRES_DB: "wobsongocore_db"
+    volumes:
+      - wobsongocorepgdata:/var/lib/postgresql
+    ports:
+      - 55432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "wobsongocore", "-d", "wobsongocore_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      netwobsongocore:
+  minio:
+    image: quay.io/minio/minio
+    ports:
+      - "9190:9000" # S3 API
+      - "9191:9001" # Web UI
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BROWSER_REDIRECT_URL: https://wobsongo-oss-s3-console.devx.co.id
+      MINIO_BROWSER_REDIRECT: false
+    command: server /data --console-address ":9001"
+    volumes:
+      - wobsongocore-miniodata:/data
+    networks:
+      netwobsongocore:
+  mailhog:
+    build:
+      context: .
+      dockerfile: mailhog.Dockerfile
+    ports:
+      - 1027:1025
+      - 8027:8025
+    networks:
+      netwobsongocore:
+  bugsink:
+    image: bugsink/bugsink:2.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      netwobsongocore:
+    ports:
+      - "8082:8000"
+    environment:
+      SECRET_KEY: yMLYThim9NybWgXiUGat32Aa0Qbgqscf4NPDQuZO2glcZPAiXn
+      CREATE_SUPERUSER: wobsongocore:LocalDev123
+      PORT: 8000
+      DATABASE_URL: postgres://wobsongocore:LocalDev123@postgres:5432/wobsongocore_db?sslmode=disable
+      BEHIND_HTTPS_PROXY: "false"
+      USE_X_FORWARDED_HOST: "false"
+      BASE_URL: "http://localhost:8081"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c ''import requests; requests.get("http://localhost:8000/").raise_for_status()''',
+        ]
+      interval: 5s
+      timeout: 20s
+      retries: 10
+  riverui:
+    # Official River queue dashboard — reads directly from the river_job
+    # tables already in this Postgres instance, no app-side changes needed.
+    # http://localhost:8080
+    image: ghcr.io/riverqueue/riverui:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      netwobsongocore:
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://wobsongocore:LocalDev123@postgres:5432/wobsongocore_db?sslmode=disable
+      # Uncomment to require basic auth (unauthenticated by default, fine for local dev):
+      # RIVER_BASIC_AUTH_USER: admin
+      # RIVER_BASIC_AUTH_PASS: LocalDev123
+
+volumes:
+  wobsongocorepgdata:
+  wobsongocore-miniodata:
+
+networks:
+  netwobsongocore:

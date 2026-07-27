@@ -1,0 +1,12 @@
+package dashboardview
+
+import "github.com/kairosedubf/wobsongo/view/layout"
+
+templ Index(data layout.AppLayoutData) {
+	@layout.App(data) {
+		<div class="flex flex-col items-center justify-center gap-2 text-center h-full text-muted-foreground">
+			<p class="text-lg font-medium text-foreground">Welcome, { data.User.Name }.</p>
+			<p class="text-sm">There's nothing here yet — this is the starting point for what's next.</p>
+		</div>
+	}
+}

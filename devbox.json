@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "gnumake@4.4.1",
+    "go@1.26.3",
+    "golangci-lint@2.12.2",
+    "nodejs@26.3.0",
+    "pnpm@11.5.3",
+    "python@3.14.4",
+    "uv@0.11.19",
+    "lazysql@0.5.4",
+    "go-migrate@4.18.1",
+    "tailwindcss_4@4.3.2"
+  ],
+  "shell": {
+    "init_hook": ["echo '🚀 Initializing environment...'"],
+    "scripts": {
+      "check": "make fmt check",
+      "install-docs": "uv pip install 'mkdocs==1.6.1' 'mkdocs-material==9.7.0'  && npm install -g log4brains --prefix .devbox/node_modules",
+      "docs": "uv run mkdocs serve -a localhost:8001",
+      "adr": "log4brains adr new",
+      "adr:preview": "log4brains preview",
+      "adr:build": "log4brains build"
+    }
+  },
+  "env": {
+    "UV_CACHE_DIR": ".devbox/.uv_cache",
+    "UV_VENV_CLEAR": "0",
+    "PATH": "$PWD/.devbox/node_modules/bin:$PATH"
+  }
+}

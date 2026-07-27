@@ -1,0 +1,22 @@
+# Local environment — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+tmp/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go test cache
+*.test
+*.out
