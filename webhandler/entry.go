@@ -12,7 +12,9 @@ import (
 
 // WebRepos holds the repo implementations for the HTML layer.
 type WebRepos struct {
-	UserRepo data.UserRepoer
+	UserRepo     data.UserRepoer
+	DocumentRepo data.DocumentRepoer
+	RawStore     data.RawObjectStore
 }
 
 // RegisterWebRoutes mounts all HTML routes onto the given Echo group.
@@ -40,4 +42,13 @@ func RegisterWebRoutes(
 
 	dash := NewDashboardHandler()
 	protected.GET("/dashboard", dash.dashboardPage)
+
+	documentSvc := service.NewDocumentService(repos.DocumentRepo)
+	docHandler := NewDocumentWebHandler(documentSvc, repos.RawStore)
+	protected.GET("/documents", docHandler.listPage)
+	protected.GET("/documents/new", docHandler.newPage)
+	protected.POST("/documents/new", docHandler.createPost)
+	protected.GET("/documents/:id/edit", docHandler.editPage)
+	protected.POST("/documents/:id/edit", docHandler.updatePost)
+	protected.POST("/documents/:id/delete", docHandler.deletePost)
 }

@@ -61,6 +61,9 @@ templ Sidebar(data AppLayoutData) {
 					@navItem("/dashboard", "Dashboard", strings.HasPrefix(data.CurrentPath, "/dashboard")) {
 						@lucide.LayoutDashboard(templ.Attributes{"class": "size-4 shrink-0"})
 					}
+					@navItem("/documents", "Documents", strings.HasPrefix(data.CurrentPath, "/documents")) {
+						@lucide.FileText(templ.Attributes{"class": "size-4 shrink-0"})
+					}
 				}
 			}
 		}

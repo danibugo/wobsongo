@@ -197,7 +197,7 @@ var serveCmd = &cobra.Command{
 		}()
 
 		// Build and start HTTP API server.
-		app := buildApp(cfg, pool, riverClient, mediaProvider, buildAppClaimCheckDeps{
+		app := buildApp(cfg, pool, riverClient, mediaProvider, mediaProvider, buildAppClaimCheckDeps{
 			chunkRepo:     chunkRepo,
 			knowledgeRepo: atomicKnowledgeRepo,
 			embedder:      embeddingClient,

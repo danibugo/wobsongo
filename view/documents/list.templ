@@ -1,0 +1,168 @@
+package documents
+
+import (
+	"fmt"
+	"math"
+
+	"github.com/kairosedubf/wobsongo/components/button"
+	"github.com/kairosedubf/wobsongo/components/pagination"
+	"github.com/kairosedubf/wobsongo/components/table"
+	"github.com/kairosedubf/wobsongo/dto"
+	"github.com/kairosedubf/wobsongo/model"
+	"github.com/kairosedubf/wobsongo/view/layout"
+)
+
+// ListPageData holds the data for the document list page.
+type ListPageData struct {
+	layout.AppLayoutData
+	Results dto.PaginationResults[model.Document]
+}
+
+// formatBytes returns a human-readable file size string.
+func formatBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+// totalPages computes the total number of pages.
+func totalPages(totalItems, perPage int) int {
+	if perPage <= 0 {
+		return 1
+	}
+	return int(math.Ceil(float64(totalItems) / float64(perPage)))
+}
+
+// documentTitle returns the display title: Title if set, otherwise Filename.
+func documentTitle(doc model.Document) string {
+	if doc.Title != "" {
+		return doc.Title
+	}
+	return doc.Filename
+}
+
+templ List(data ListPageData) {
+	{{ data.Breadcrumbs = []layout.Crumb{{Label: "Documents", Href: ""}} }}
+	@layout.App(data.AppLayoutData) {
+		<div class="flex items-center justify-between mb-6">
+			<div></div>
+			@button.Button(button.Props{
+				Href:    "/documents/new",
+				Variant: button.VariantDefault,
+				Size:    button.SizeSm,
+			}) {
+				New document
+			}
+		</div>
+		if len(data.Results.Items) == 0 {
+			<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+				<p class="text-sm">No documents yet.</p>
+				<a href="/documents/new" class="text-sm underline hover:text-foreground">Upload your first document</a>
+			</div>
+		} else {
+			@table.Table() {
+				@table.Header() {
+					@table.Row() {
+						@table.Head() { Title }
+						@table.Head() { Type }
+						@table.Head() { Size }
+						@table.Head() { Language }
+						@table.Head() { Status }
+						@table.Head() { Uploaded }
+						@table.Head(table.HeadProps{Class: "text-right"}) { Actions }
+					}
+				}
+				@table.Body() {
+					for _, doc := range data.Results.Items {
+						@table.Row() {
+							@table.Cell(table.CellProps{Class: "font-medium max-w-xs truncate"}) {
+								{ documentTitle(doc) }
+							}
+							@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+								{ doc.Filetype }
+							}
+							@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+								{ formatBytes(doc.Filesize) }
+							}
+							@table.Cell() {
+								{ doc.Language.String() }
+							}
+							@table.Cell() {
+								if doc.IngestedAt != nil {
+									<span class="text-xs text-green-600 dark:text-green-400 font-medium">Ingested</span>
+								} else {
+									<span class="text-xs text-muted-foreground">Pending</span>
+								}
+							}
+							@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+								{ doc.CreatedAt.Format("2 Jan 2006") }
+							}
+							@table.Cell(table.CellProps{Class: "text-right"}) {
+								<div class="flex items-center justify-end gap-2">
+									@button.Button(button.Props{
+										Href:    fmt.Sprintf("/documents/%s/edit", doc.ID),
+										Variant: button.VariantOutline,
+										Size:    button.SizeSm,
+									}) {
+										Edit
+									}
+									<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/documents/%s/delete", doc.ID)) }>
+										<input type="hidden" name="_csrf" value={ data.CSRFToken }/>
+										@button.Button(button.Props{
+											Type:    button.TypeSubmit,
+											Variant: button.VariantDestructive,
+											Size:    button.SizeSm,
+											Attributes: templ.Attributes{
+												"onclick": "return confirm('Delete this document? This cannot be undone.')",
+											},
+										}) {
+											Delete
+										}
+									</form>
+								</div>
+							}
+						}
+					}
+				}
+			}
+			{{ pages := pagination.CreatePagination(data.Results.Page, totalPages(data.Results.TotalItems, data.Results.PerPage), 7) }}
+			if pages.TotalPages > 1 {
+				<div class="mt-6 flex justify-center">
+					@pagination.Pagination() {
+						@pagination.Content() {
+							@pagination.Item() {
+								@pagination.Previous(pagination.PreviousProps{
+									Href:     fmt.Sprintf("?page=%d", pages.CurrentPage-1),
+									Disabled: !pages.HasPrevious,
+								})
+							}
+							for _, p := range pages.Pages {
+								@pagination.Item() {
+									@pagination.Link(pagination.LinkProps{
+										Href:     fmt.Sprintf("?page=%d", p),
+										IsActive: p == pages.CurrentPage,
+									}) {
+										{ fmt.Sprintf("%d", p) }
+									}
+								}
+							}
+							@pagination.Item() {
+								@pagination.Next(pagination.NextProps{
+									Href:     fmt.Sprintf("?page=%d", pages.CurrentPage+1),
+									Disabled: !pages.HasNext,
+								})
+							}
+						}
+					}
+				</div>
+			}
+		}
+	}
+}

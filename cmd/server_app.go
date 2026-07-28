@@ -25,13 +25,15 @@ type buildAppClaimCheckDeps struct {
 }
 
 // buildApp initializes all API-facing repositories and returns a configured core.App.
-// mediaProvider is constructed by the caller (cmd/server.go), shared with any
-// River workers that also need it, rather than built again here.
+// mediaProvider and rawStore are constructed by the caller (cmd/server.go) — the
+// same *repo.S3Provider satisfies both interfaces but is passed separately so each
+// field is statically typed at the call site.
 func buildApp(
 	cfg *config.Config,
 	pool *pgxpool.Pool,
 	riverClient *river.Client[pgx.Tx],
 	mediaProvider data.MediaUploadProvider,
+	rawStore data.RawObjectStore,
 	claimCheck buildAppClaimCheckDeps,
 ) *core.App {
 	queries := db.New(pool)
@@ -44,6 +46,7 @@ func buildApp(
 		cfg,
 		core.WithDocumentRepo(documentRepo),
 		core.WithMediaProvider(mediaProvider),
+		core.WithRawObjectStore(rawStore),
 		core.WithChunkRepo(claimCheck.chunkRepo),
 		core.WithKnowledgeRepo(claimCheck.knowledgeRepo),
 		core.WithEmbedder(claimCheck.embedder),
