@@ -1,7 +1,10 @@
 package webhandler
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
+	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/service"
@@ -32,10 +35,12 @@ func NewDocumentChunkWebHandler(
 	return &DocumentChunkWebHandler{svc: svc, documentSvc: documentSvc, mediaSvc: mediaSvc}
 }
 
-// listPage renders the paginated chunk list for the document selected via the
-// document_id query param. With no (or an invalid) document_id, it renders
-// the empty "select a document" state rather than erroring — chunks are
-// deliberately never listed generically across every document.
+// listPage renders the chunk list for exactly one PDF page of the document
+// selected via the document_id query param, with a pagination nav mapping
+// 1:1 onto the document's page count. With no (or an invalid/not-found)
+// document_id, it renders the empty "select a document" state rather than
+// erroring — chunks are deliberately never listed generically across every
+// document.
 func (h *DocumentChunkWebHandler) listPage(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -47,36 +52,44 @@ func (h *DocumentChunkWebHandler) listPage(c echo.Context) error {
 		return err
 	}
 
-	var pagination dto.PaginationDTO
-	if err := c.Bind(&pagination); err != nil || pagination.Page < 1 {
-		pagination.Page = 1
-	}
-	if pagination.PerPage < 1 {
-		pagination.PerPage = 20
-	}
+	var pageParam dto.PaginationDTO
+	_ = c.Bind(&pageParam)
+	requestedPage := int(pageParam.GetPage())
 
 	documentIDParam := c.QueryParam("document_id")
-	var results dto.PaginationResults[model.DocumentChunkPage]
+	var chunks []model.DocumentChunk
 	var pdfURL string
+	currentPage := 1
+	totalPages := 0
 	hasSelection := false
 	if documentIDParam != "" {
 		if docID, parseErr := uuid.Parse(documentIDParam); parseErr == nil {
-			hasSelection = true
-			r, listErr := h.svc.ListGroupedByPage(ctx, docID, &pagination)
-			if listErr != nil {
-				return listErr
+			doc, getErr := h.documentSvc.GetByID(ctx, docID)
+			if getErr != nil && !errors.Is(getErr, data.ErrNotFound) {
+				return getErr
 			}
-			results = *r
+			if doc != nil {
+				hasSelection = true
+				totalPages = doc.PageCount
 
-			for i := range docs.Items {
-				doc := &docs.Items[i]
-				if doc.ID == docID && doc.Filetype == pdfContentType {
+				currentPage = max(requestedPage, 1)
+				if totalPages > 0 && currentPage > totalPages {
+					currentPage = totalPages
+				}
+
+				if totalPages > 0 {
+					chunks, err = h.svc.ListByPage(ctx, docID, currentPage)
+					if err != nil {
+						return err
+					}
+				}
+
+				if doc.Filetype == pdfContentType {
 					url, presignErr := h.mediaSvc.GetPresignedGETURL(ctx, string(doc.FileURL), 0)
 					if presignErr != nil {
 						return presignErr
 					}
 					pdfURL = url
-					break
 				}
 			}
 		}
@@ -85,7 +98,9 @@ func (h *DocumentChunkWebHandler) listPage(c echo.Context) error {
 	layoutData := buildAppLayout(c, "Chunks")
 	return chunkview.List(chunkview.ListPageData{
 		AppLayoutData:      layoutData,
-		Results:            results,
+		Chunks:             chunks,
+		CurrentPage:        currentPage,
+		TotalPages:         totalPages,
 		Documents:          docs.Items,
 		SelectedDocumentID: documentIDParam,
 		HasSelection:       hasSelection,

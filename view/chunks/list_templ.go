@@ -10,13 +10,11 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/kairosedubf/wobsongo/components/pagination"
 	"github.com/kairosedubf/wobsongo/components/table"
 	"github.com/kairosedubf/wobsongo/components/tooltip"
-	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/view/layout"
 )
@@ -24,21 +22,21 @@ import (
 // ListPageData holds the data for the chunk list page.
 type ListPageData struct {
 	layout.AppLayoutData
-	Results            dto.PaginationResults[model.DocumentChunkPage]
+	// Chunks are the chunks on CurrentPage only — the page shows exactly one
+	// PDF page of chunks at a time.
+	Chunks []model.DocumentChunk
+	// CurrentPage is the PDF page number currently displayed.
+	CurrentPage int
+	// TotalPages is the document's total page count (model.Document.PageCount),
+	// driving the pagination nav 1:1 with actual PDF pages — not just pages
+	// that happen to have chunks.
+	TotalPages         int
 	Documents          []model.Document
 	SelectedDocumentID string
 	HasSelection       bool
 	// PDFURL is a presigned GET URL for the selected document's raw file,
 	// only set when that document is a PDF — the viewer pane is PDF-only.
 	PDFURL string
-}
-
-// totalPages computes the total number of pages.
-func totalPages(totalItems, perPage int) int {
-	if perPage <= 0 {
-		return 1
-	}
-	return int(math.Ceil(float64(totalItems) / float64(perPage)))
 }
 
 // documentTitle returns the display title: Title if set, otherwise Filename.
@@ -113,7 +111,7 @@ func List(data ListPageData) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(doc.ID.String())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 74, Col: 37}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 72, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -136,7 +134,7 @@ func List(data ListPageData) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(documentTitle(doc))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 75, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 73, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -161,33 +159,27 @@ func List(data ListPageData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if len(data.Results.Items) == 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col items-center justify-center py-20 text-muted-foreground gap-2\"><p class=\"text-sm\">No chunks for this document.</p></div>")
+				if data.TotalPages <= 0 {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col items-center justify-center py-20 text-muted-foreground gap-2\"><p class=\"text-sm\">No chunks for this document yet.</p></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = tooltip.Script().Render(ctx, templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-						if !templ_7745c5c3_IsBuffer {
-							defer func() {
-								templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err == nil {
-									templ_7745c5c3_Err = templ_7745c5c3_BufErr
-								}
-							}()
+					if len(data.Chunks) == 0 {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex flex-col items-center justify-center py-16 text-muted-foreground gap-2\"><p class=\"text-sm\">No chunks detected on this page.</p></div>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
 						}
-						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Var6 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					} else {
+						templ_7745c5c3_Err = tooltip.Script().Render(ctx, templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 							if !templ_7745c5c3_IsBuffer {
@@ -199,7 +191,7 @@ func List(data ListPageData) templ.Component {
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Var7 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+							templ_7745c5c3_Var6 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 								if !templ_7745c5c3_IsBuffer {
@@ -211,7 +203,7 @@ func List(data ListPageData) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Var8 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+								templ_7745c5c3_Var7 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 									if !templ_7745c5c3_IsBuffer {
@@ -223,136 +215,7 @@ func List(data ListPageData) templ.Component {
 										}()
 									}
 									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "Seq ")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "Layout Type ")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "Language ")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Var11 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "Text ")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								return nil
-							})
-							templ_7745c5c3_Err = table.Row().Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							return nil
-						})
-						templ_7745c5c3_Err = table.Header().Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Var12 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-							if !templ_7745c5c3_IsBuffer {
-								defer func() {
-									templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-									if templ_7745c5c3_Err == nil {
-										templ_7745c5c3_Err = templ_7745c5c3_BufErr
-									}
-								}()
-							}
-							ctx = templ.InitializeContext(ctx)
-							for _, group := range data.Results.Items {
-								templ_7745c5c3_Var13 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Var14 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_Var8 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 										if !templ_7745c5c3_IsBuffer {
@@ -364,32 +227,21 @@ func List(data ListPageData) templ.Component {
 											}()
 										}
 										ctx = templ.InitializeContext(ctx)
-										var templ_7745c5c3_Var15 string
-										templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Page %d — %d chunks", group.Page, len(group.Chunks)))
-										if templ_7745c5c3_Err != nil {
-											return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 110, Col: 80}
-										}
-										_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "Seq ")
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
 										return nil
 									})
-									templ_7745c5c3_Err = table.Cell(table.CellProps{
-										Class:      "font-medium",
-										Attributes: templ.Attributes{"colspan": "4"},
-									}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
+									templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Row(table.RowProps{Class: "bg-muted/50 hover:bg-muted/50"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								for _, chunk := range group.Chunks {
-									templ_7745c5c3_Var16 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " ")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 										if !templ_7745c5c3_IsBuffer {
@@ -401,7 +253,110 @@ func List(data ListPageData) templ.Component {
 											}()
 										}
 										ctx = templ.InitializeContext(ctx)
-										templ_7745c5c3_Var17 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "Layout Type ")
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										return nil
+									})
+									templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " ")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+										if !templ_7745c5c3_IsBuffer {
+											defer func() {
+												templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+												if templ_7745c5c3_Err == nil {
+													templ_7745c5c3_Err = templ_7745c5c3_BufErr
+												}
+											}()
+										}
+										ctx = templ.InitializeContext(ctx)
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "Language ")
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										return nil
+									})
+									templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, " ")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									templ_7745c5c3_Var11 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+										if !templ_7745c5c3_IsBuffer {
+											defer func() {
+												templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+												if templ_7745c5c3_Err == nil {
+													templ_7745c5c3_Err = templ_7745c5c3_BufErr
+												}
+											}()
+										}
+										ctx = templ.InitializeContext(ctx)
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "Text ")
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										return nil
+									})
+									templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var11), templ_7745c5c3_Buffer)
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = table.Row().Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								return nil
+							})
+							templ_7745c5c3_Err = table.Header().Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " ")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Var12 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+								if !templ_7745c5c3_IsBuffer {
+									defer func() {
+										templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+										if templ_7745c5c3_Err == nil {
+											templ_7745c5c3_Err = templ_7745c5c3_BufErr
+										}
+									}()
+								}
+								ctx = templ.InitializeContext(ctx)
+								for _, chunk := range data.Chunks {
+									templ_7745c5c3_Var13 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+										if !templ_7745c5c3_IsBuffer {
+											defer func() {
+												templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+												if templ_7745c5c3_Err == nil {
+													templ_7745c5c3_Err = templ_7745c5c3_BufErr
+												}
+											}()
+										}
+										ctx = templ.InitializeContext(ctx)
+										templ_7745c5c3_Var14 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 											if !templ_7745c5c3_IsBuffer {
@@ -413,49 +368,18 @@ func List(data ListPageData) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var18 string
-											templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", chunk.SequenceNumber))
+											var templ_7745c5c3_Var15 string
+											templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", chunk.SequenceNumber))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 122, Col: 53}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 116, Col: 53}
 											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
-											if templ_7745c5c3_Err != nil {
-												return templ_7745c5c3_Err
-											}
-											return nil
-										})
-										templ_7745c5c3_Err = table.Cell(table.CellProps{Class: "text-muted-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
-										if templ_7745c5c3_Err != nil {
-											return templ_7745c5c3_Err
-										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " ")
-										if templ_7745c5c3_Err != nil {
-											return templ_7745c5c3_Err
-										}
-										templ_7745c5c3_Var19 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-											if !templ_7745c5c3_IsBuffer {
-												defer func() {
-													templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-													if templ_7745c5c3_Err == nil {
-														templ_7745c5c3_Err = templ_7745c5c3_BufErr
-													}
-												}()
-											}
-											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var20 string
-											templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(string(chunk.LayoutType))
-											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 125, Col: 38}
-											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 											if templ_7745c5c3_Err != nil {
 												return templ_7745c5c3_Err
 											}
 											return nil
 										})
-										templ_7745c5c3_Err = table.Cell(table.CellProps{Class: "text-muted-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var19), templ_7745c5c3_Buffer)
+										templ_7745c5c3_Err = table.Cell(table.CellProps{Class: "text-muted-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var14), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
@@ -463,7 +387,7 @@ func List(data ListPageData) templ.Component {
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Var21 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_Var16 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 											if !templ_7745c5c3_IsBuffer {
@@ -475,18 +399,18 @@ func List(data ListPageData) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var22 string
-											templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(chunk.Language.String())
+											var templ_7745c5c3_Var17 string
+											templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(string(chunk.LayoutType))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 128, Col: 37}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 119, Col: 38}
 											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 											if templ_7745c5c3_Err != nil {
 												return templ_7745c5c3_Err
 											}
 											return nil
 										})
-										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
+										templ_7745c5c3_Err = table.Cell(table.CellProps{Class: "text-muted-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
@@ -494,7 +418,7 @@ func List(data ListPageData) templ.Component {
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Var23 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_Var18 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 											if !templ_7745c5c3_IsBuffer {
@@ -506,7 +430,38 @@ func List(data ListPageData) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											templ_7745c5c3_Var24 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+											var templ_7745c5c3_Var19 string
+											templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(chunk.Language.String())
+											if templ_7745c5c3_Err != nil {
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 122, Col: 37}
+											}
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+											if templ_7745c5c3_Err != nil {
+												return templ_7745c5c3_Err
+											}
+											return nil
+										})
+										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var18), templ_7745c5c3_Buffer)
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, " ")
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										templ_7745c5c3_Var20 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+											if !templ_7745c5c3_IsBuffer {
+												defer func() {
+													templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+													if templ_7745c5c3_Err == nil {
+														templ_7745c5c3_Err = templ_7745c5c3_BufErr
+													}
+												}()
+											}
+											ctx = templ.InitializeContext(ctx)
+											templ_7745c5c3_Var21 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 												templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 												templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 												if !templ_7745c5c3_IsBuffer {
@@ -518,7 +473,7 @@ func List(data ListPageData) templ.Component {
 													}()
 												}
 												ctx = templ.InitializeContext(ctx)
-												templ_7745c5c3_Var25 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+												templ_7745c5c3_Var22 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 													templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 													templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 													if !templ_7745c5c3_IsBuffer {
@@ -530,34 +485,34 @@ func List(data ListPageData) templ.Component {
 														}()
 													}
 													ctx = templ.InitializeContext(ctx)
-													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<span class=\"block truncate cursor-help\">")
+													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<span class=\"block truncate cursor-help\">")
 													if templ_7745c5c3_Err != nil {
 														return templ_7745c5c3_Err
 													}
-													var templ_7745c5c3_Var26 string
-													templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(textPreview(chunk.Text))
+													var templ_7745c5c3_Var23 string
+													templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(textPreview(chunk.Text))
 													if templ_7745c5c3_Err != nil {
-														return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 133, Col: 80}
+														return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 127, Col: 80}
 													}
-													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
+													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 													if templ_7745c5c3_Err != nil {
 														return templ_7745c5c3_Err
 													}
-													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span>")
+													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</span>")
 													if templ_7745c5c3_Err != nil {
 														return templ_7745c5c3_Err
 													}
 													return nil
 												})
-												templ_7745c5c3_Err = tooltip.Trigger(tooltip.TriggerProps{}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var25), templ_7745c5c3_Buffer)
+												templ_7745c5c3_Err = tooltip.Trigger(tooltip.TriggerProps{}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var22), templ_7745c5c3_Buffer)
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
-												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " ")
+												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " ")
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
-												templ_7745c5c3_Var27 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+												templ_7745c5c3_Var24 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 													templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 													templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 													if !templ_7745c5c3_IsBuffer {
@@ -569,12 +524,12 @@ func List(data ListPageData) templ.Component {
 														}()
 													}
 													ctx = templ.InitializeContext(ctx)
-													var templ_7745c5c3_Var28 string
-													templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(chunk.Text)
+													var templ_7745c5c3_Var25 string
+													templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(chunk.Text)
 													if templ_7745c5c3_Err != nil {
-														return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 141, Col: 26}
+														return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 135, Col: 26}
 													}
-													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 													if templ_7745c5c3_Err != nil {
 														return templ_7745c5c3_Err
 													}
@@ -585,19 +540,19 @@ func List(data ListPageData) templ.Component {
 													Class:         "max-w-sm whitespace-pre-wrap break-words text-left",
 													HoverDelay:    200,
 													HoverOutDelay: 100,
-												}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var27), templ_7745c5c3_Buffer)
+												}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var24), templ_7745c5c3_Buffer)
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
 												return nil
 											})
-											templ_7745c5c3_Err = tooltip.Tooltip().Render(templ.WithChildren(ctx, templ_7745c5c3_Var24), templ_7745c5c3_Buffer)
+											templ_7745c5c3_Err = tooltip.Tooltip().Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
 											if templ_7745c5c3_Err != nil {
 												return templ_7745c5c3_Err
 											}
 											return nil
 										})
-										templ_7745c5c3_Err = table.Cell(table.CellProps{Class: "max-w-[220px]"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var23), templ_7745c5c3_Buffer)
+										templ_7745c5c3_Err = table.Cell(table.CellProps{Class: "max-w-[220px]"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
@@ -609,35 +564,39 @@ func List(data ListPageData) templ.Component {
 											"data-page": fmt.Sprintf("%d", chunk.Page),
 											"data-bbox": chunkBBox(chunk),
 										},
-									}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+									}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
 								}
+								return nil
+							})
+							templ_7745c5c3_Err = table.Body().Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
 							}
 							return nil
 						})
-						templ_7745c5c3_Err = table.Body().Render(templ.WithChildren(ctx, templ_7745c5c3_Var12), templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = table.Table().Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						return nil
-					})
-					templ_7745c5c3_Err = table.Table().Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " <script type=\"module\">\n\t\t\t\t\t\t\t\tconst viewer = document.getElementById('chunk-pdf-viewer');\n\t\t\t\t\t\t\t\tlet pinnedRow = null;\n\n\t\t\t\t\t\t\t\tfunction clearHighlight() {\n\t\t\t\t\t\t\t\t\tif (!viewer) return;\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('lefts', '');\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('bottoms', '');\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('rights', '');\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('tops', '');\n\t\t\t\t\t\t\t\t}\n\n\t\t\t\t\t\t\t\tasync function applyChunk(row) {\n\t\t\t\t\t\t\t\t\tif (!viewer) return;\n\t\t\t\t\t\t\t\t\tconst { doclingBboxesToProps } = await import('/static/js/pdf-bbox-viewer.js');\n\t\t\t\t\t\t\t\t\tconst page = row.dataset.page;\n\t\t\t\t\t\t\t\t\tconst bbox = (row.dataset.bbox || '').split(',').map(Number);\n\t\t\t\t\t\t\t\t\tif (bbox.length !== 4 || bbox.some(Number.isNaN)) return;\n\t\t\t\t\t\t\t\t\tconst attrs = doclingBboxesToProps([bbox]);\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('page-number', page);\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('lefts', attrs.lefts);\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('bottoms', attrs.bottoms);\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('rights', attrs.rights);\n\t\t\t\t\t\t\t\t\tviewer.setAttribute('tops', attrs.tops);\n\t\t\t\t\t\t\t\t}\n\n\t\t\t\t\t\t\t\tdocument.querySelectorAll('.chunk-row').forEach((row) => {\n\t\t\t\t\t\t\t\t\trow.addEventListener('mouseenter', () => {\n\t\t\t\t\t\t\t\t\t\tapplyChunk(row);\n\t\t\t\t\t\t\t\t\t\tif (row !== pinnedRow) {\n\t\t\t\t\t\t\t\t\t\t\trow.style.backgroundColor = 'var(--muted)';\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\t\trow.addEventListener('mouseleave', () => {\n\t\t\t\t\t\t\t\t\t\tif (row !== pinnedRow) {\n\t\t\t\t\t\t\t\t\t\t\trow.style.backgroundColor = '';\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\tif (pinnedRow) {\n\t\t\t\t\t\t\t\t\t\t\tapplyChunk(pinnedRow);\n\t\t\t\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t\t\t\tclearHighlight();\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\t\trow.addEventListener('click', () => {\n\t\t\t\t\t\t\t\t\t\tif (pinnedRow) {\n\t\t\t\t\t\t\t\t\t\t\tpinnedRow.style.backgroundColor = '';\n\t\t\t\t\t\t\t\t\t\t\tpinnedRow.style.boxShadow = '';\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t\tpinnedRow = row;\n\t\t\t\t\t\t\t\t\t\trow.style.backgroundColor = 'var(--muted)';\n\t\t\t\t\t\t\t\t\t\trow.style.boxShadow = 'inset 3px 0 0 0 var(--primary)';\n\t\t\t\t\t\t\t\t\t\tapplyChunk(row);\n\t\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t</script>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " <script type=\"module\">\n\t\t\t\t\t\t\tconst viewer = document.getElementById('chunk-pdf-viewer');\n\t\t\t\t\t\t\tlet pinnedRow = null;\n\n\t\t\t\t\t\t\tfunction clearHighlight() {\n\t\t\t\t\t\t\t\tif (!viewer) return;\n\t\t\t\t\t\t\t\tviewer.setAttribute('lefts', '');\n\t\t\t\t\t\t\t\tviewer.setAttribute('bottoms', '');\n\t\t\t\t\t\t\t\tviewer.setAttribute('rights', '');\n\t\t\t\t\t\t\t\tviewer.setAttribute('tops', '');\n\t\t\t\t\t\t\t}\n\n\t\t\t\t\t\t\tasync function applyChunk(row) {\n\t\t\t\t\t\t\t\tif (!viewer) return;\n\t\t\t\t\t\t\t\tconst { doclingBboxesToProps } = await import('/static/js/pdf-bbox-viewer.js');\n\t\t\t\t\t\t\t\tconst page = row.dataset.page;\n\t\t\t\t\t\t\t\tconst bbox = (row.dataset.bbox || '').split(',').map(Number);\n\t\t\t\t\t\t\t\tif (bbox.length !== 4 || bbox.some(Number.isNaN)) return;\n\t\t\t\t\t\t\t\tconst attrs = doclingBboxesToProps([bbox]);\n\t\t\t\t\t\t\t\tviewer.setAttribute('page-number', page);\n\t\t\t\t\t\t\t\tviewer.setAttribute('lefts', attrs.lefts);\n\t\t\t\t\t\t\t\tviewer.setAttribute('bottoms', attrs.bottoms);\n\t\t\t\t\t\t\t\tviewer.setAttribute('rights', attrs.rights);\n\t\t\t\t\t\t\t\tviewer.setAttribute('tops', attrs.tops);\n\t\t\t\t\t\t\t}\n\n\t\t\t\t\t\t\tdocument.querySelectorAll('.chunk-row').forEach((row) => {\n\t\t\t\t\t\t\t\trow.addEventListener('mouseenter', () => {\n\t\t\t\t\t\t\t\t\tapplyChunk(row);\n\t\t\t\t\t\t\t\t\tif (row !== pinnedRow) {\n\t\t\t\t\t\t\t\t\t\trow.style.backgroundColor = 'var(--muted)';\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\trow.addEventListener('mouseleave', () => {\n\t\t\t\t\t\t\t\t\tif (row !== pinnedRow) {\n\t\t\t\t\t\t\t\t\t\trow.style.backgroundColor = '';\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\tif (pinnedRow) {\n\t\t\t\t\t\t\t\t\t\tapplyChunk(pinnedRow);\n\t\t\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\t\t\tclearHighlight();\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t\trow.addEventListener('click', () => {\n\t\t\t\t\t\t\t\t\tif (pinnedRow) {\n\t\t\t\t\t\t\t\t\t\tpinnedRow.style.backgroundColor = '';\n\t\t\t\t\t\t\t\t\t\tpinnedRow.style.boxShadow = '';\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\tpinnedRow = row;\n\t\t\t\t\t\t\t\t\trow.style.backgroundColor = 'var(--muted)';\n\t\t\t\t\t\t\t\t\trow.style.boxShadow = 'inset 3px 0 0 0 var(--primary)';\n\t\t\t\t\t\t\t\t\tapplyChunk(row);\n\t\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\t});\n\t\t\t\t\t\t</script> ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					pages := pagination.CreatePagination(data.Results.Page, totalPages(data.Results.TotalItems, data.Results.PerPage), 7)
+					pages := pagination.CreatePagination(data.CurrentPage, data.TotalPages, 7)
 					if pages.TotalPages > 1 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"mt-6 flex justify-center\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"mt-6 flex justify-start\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Var29 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+						templ_7745c5c3_Var26 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 							if !templ_7745c5c3_IsBuffer {
@@ -649,7 +608,7 @@ func List(data ListPageData) templ.Component {
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Var30 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+							templ_7745c5c3_Var27 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 								if !templ_7745c5c3_IsBuffer {
@@ -661,7 +620,7 @@ func List(data ListPageData) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Var31 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+								templ_7745c5c3_Var28 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 									if !templ_7745c5c3_IsBuffer {
@@ -682,12 +641,12 @@ func List(data ListPageData) templ.Component {
 									}
 									return nil
 								})
-								templ_7745c5c3_Err = pagination.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var31), templ_7745c5c3_Buffer)
+								templ_7745c5c3_Err = pagination.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var28), templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
 								for _, p := range pages.Pages {
-									templ_7745c5c3_Var32 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_Var29 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 										if !templ_7745c5c3_IsBuffer {
@@ -699,7 +658,7 @@ func List(data ListPageData) templ.Component {
 											}()
 										}
 										ctx = templ.InitializeContext(ctx)
-										templ_7745c5c3_Var33 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_Var30 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 											if !templ_7745c5c3_IsBuffer {
@@ -711,12 +670,12 @@ func List(data ListPageData) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var34 string
-											templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", p))
+											var templ_7745c5c3_Var31 string
+											templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", p))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 222, Col: 35}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 216, Col: 35}
 											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 											if templ_7745c5c3_Err != nil {
 												return templ_7745c5c3_Err
 											}
@@ -725,22 +684,22 @@ func List(data ListPageData) templ.Component {
 										templ_7745c5c3_Err = pagination.Link(pagination.LinkProps{
 											Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, p),
 											IsActive: p == pages.CurrentPage,
-										}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var33), templ_7745c5c3_Buffer)
+										}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var30), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
 										return nil
 									})
-									templ_7745c5c3_Err = pagination.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var32), templ_7745c5c3_Buffer)
+									templ_7745c5c3_Err = pagination.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var29), templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
 								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " ")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, " ")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
-								templ_7745c5c3_Var35 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+								templ_7745c5c3_Var32 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 									if !templ_7745c5c3_IsBuffer {
@@ -761,57 +720,70 @@ func List(data ListPageData) templ.Component {
 									}
 									return nil
 								})
-								templ_7745c5c3_Err = pagination.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var35), templ_7745c5c3_Buffer)
+								templ_7745c5c3_Err = pagination.Item().Render(templ.WithChildren(ctx, templ_7745c5c3_Var32), templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
 								return nil
 							})
-							templ_7745c5c3_Err = pagination.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var30), templ_7745c5c3_Buffer)
+							templ_7745c5c3_Err = pagination.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var27), templ_7745c5c3_Buffer)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							return nil
 						})
-						templ_7745c5c3_Err = pagination.Pagination().Render(templ.WithChildren(ctx, templ_7745c5c3_Var29), templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = pagination.Pagination().Render(templ.WithChildren(ctx, templ_7745c5c3_Var26), templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div><div class=\"min-w-0 border-l pl-6\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div><div class=\"min-w-0 border-l pl-6 sticky top-6 self-start\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if data.PDFURL != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<script type=\"module\" src=\"/static/js/pdf-bbox-viewer.js\"></script> <div class=\"max-h-[85vh] overflow-auto rounded-md border\"><pdf-bbox-viewer id=\"chunk-pdf-viewer\" url=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<script type=\"module\" src=\"/static/js/pdf-bbox-viewer.js\"></script> <div class=\"max-h-[85vh] overflow-auto rounded-md border\"><pdf-bbox-viewer id=\"chunk-pdf-viewer\" url=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var36 string
-					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.PDFURL)
+					var templ_7745c5c3_Var33 string
+					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.PDFURL)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 242, Col: 63}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 236, Col: 63}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" scale=\"1.1\"></pdf-bbox-viewer></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" scale=\"1.1\" page-number=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var34 string
+					templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("%d", data.CurrentPage))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `view/chunks/list.templ`, Line: 236, Col: 127}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\"></pdf-bbox-viewer></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<div class=\"flex flex-col items-center justify-center py-20 text-muted-foreground gap-2 text-center\"><p class=\"text-sm\">PDF preview unavailable for this file type.</p></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"flex flex-col items-center justify-center py-20 text-muted-foreground gap-2 text-center\"><p class=\"text-sm\">PDF preview unavailable for this file type.</p></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

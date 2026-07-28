@@ -361,16 +361,6 @@ type DocumentChunk struct {
 	ParsedChunk
 }
 
-// DocumentChunkPage groups a document's chunks by the page they occur on, in
-// page order (chunks within a page keep SequenceNumber order). Used to
-// display/paginate chunks by their true page position instead of
-// SequenceNumber, which doesn't reflect page order once pictures/tables are
-// present (see mapDoclingDocument).
-type DocumentChunkPage struct {
-	Page   int
-	Chunks []DocumentChunk
-}
-
 // AtomicKnowledge represents a single unit of knowledge in the system,
 // parsed from a specific document chunk and associated with a truth tier.
 // One chunk may contain multiple atomic knowledge entries, each

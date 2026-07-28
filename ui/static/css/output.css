@@ -277,6 +277,9 @@
   .top-4 {
     top: calc(var(--spacing) * 4);
   }
+  .top-6 {
+    top: calc(var(--spacing) * 6);
+  }
   .top-\[50\%\] {
     top: 50%;
   }
@@ -854,6 +857,9 @@
   .justify-end {
     justify-content: flex-end;
   }
+  .justify-start {
+    justify-content: flex-start;
+  }
   .justify-items-start {
     justify-items: start;
   }
@@ -908,6 +914,9 @@
   }
   .gap-y-0\.5 {
     row-gap: calc(var(--spacing) * 0.5);
+  }
+  .self-start {
+    align-self: flex-start;
   }
   .truncate {
     overflow: hidden;
@@ -1187,6 +1196,9 @@
   }
   .py-4 {
     padding-block: calc(var(--spacing) * 4);
+  }
+  .py-16 {
+    padding-block: calc(var(--spacing) * 16);
   }
   .py-20 {
     padding-block: calc(var(--spacing) * 20);

@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
-	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/pgvector/pgvector-go"
@@ -137,72 +136,29 @@ func (r *DocumentChunkRepo) ListChunksNeedingTranslation(
 	return chunks, nil
 }
 
-// PaginateGroupedByPage retrieves a paginated set of a document's pages
-// (grouped by the page column), each with its chunks ordered by
-// SequenceNumber, in page ASC order. Pagination is over distinct page
-// numbers, not chunk rows, so a page's chunks are never split across two
-// screens — see model.DocumentChunkPage.
-func (r *DocumentChunkRepo) PaginateGroupedByPage(
+// ListByDocumentIDAndPage retrieves a document's chunks on exactly one page,
+// ordered by SequenceNumber.
+func (r *DocumentChunkRepo) ListByDocumentIDAndPage(
 	ctx context.Context,
 	documentID uuid.UUID,
-	q data.SupportsPagination,
-) (*dto.PaginationResults[model.DocumentChunkPage], error) {
-	limit, offset := q.Limit(), q.Offset()
-
-	pages, err := r.q.ListDistinctPagesByDocumentID(
+	page int,
+) ([]model.DocumentChunk, error) {
+	rows, err := r.q.ListDocumentChunksByDocumentIDAndPage(
 		ctx,
-		db.ListDistinctPagesByDocumentIDParams{
+		db.ListDocumentChunksByDocumentIDAndPageParams{
 			DocumentID: documentID,
-			Limit:      limit,
-			Offset:     offset,
+			Page:       toInt32(page),
 		},
 	)
 	if err != nil {
 		return nil, mapPostgresError(err)
 	}
 
-	total, err := r.q.CountDistinctPagesByDocumentID(ctx, documentID)
-	if err != nil {
-		return nil, mapPostgresError(err)
+	chunks := make([]model.DocumentChunk, 0, len(rows))
+	for i := range rows {
+		chunks = append(chunks, *toModelDocumentChunk(&rows[i]))
 	}
-
-	groups := make([]model.DocumentChunkPage, len(pages))
-	for i, p := range pages {
-		groups[i] = model.DocumentChunkPage{Page: int(p)}
-	}
-
-	if len(pages) > 0 {
-		rows, err := r.q.ListDocumentChunksByDocumentIDAndPages(
-			ctx,
-			db.ListDocumentChunksByDocumentIDAndPagesParams{
-				DocumentID: documentID,
-				Pages:      pages,
-			},
-		)
-		if err != nil {
-			return nil, mapPostgresError(err)
-		}
-
-		byPage := make(map[int32][]model.DocumentChunk, len(pages))
-		for i := range rows {
-			byPage[rows[i].Page] = append(byPage[rows[i].Page], *toModelDocumentChunk(&rows[i]))
-		}
-		for i := range groups {
-			groups[i].Chunks = byPage[toInt32(groups[i].Page)]
-		}
-	}
-
-	page := int32(1)
-	if limit > 0 {
-		page = offset/limit + 1
-	}
-
-	return &dto.PaginationResults[model.DocumentChunkPage]{
-		Page:       int(page),
-		PerPage:    int(limit),
-		TotalItems: int(total),
-		Items:      groups,
-	}, nil
+	return chunks, nil
 }
 
 // UpdateChunkTranslation persists a chunk's translated text.

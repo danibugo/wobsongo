@@ -2,13 +2,11 @@ package chunks
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/kairosedubf/wobsongo/components/pagination"
 	"github.com/kairosedubf/wobsongo/components/table"
 	"github.com/kairosedubf/wobsongo/components/tooltip"
-	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/view/layout"
 )
@@ -16,21 +14,21 @@ import (
 // ListPageData holds the data for the chunk list page.
 type ListPageData struct {
 	layout.AppLayoutData
-	Results            dto.PaginationResults[model.DocumentChunkPage]
+	// Chunks are the chunks on CurrentPage only — the page shows exactly one
+	// PDF page of chunks at a time.
+	Chunks []model.DocumentChunk
+	// CurrentPage is the PDF page number currently displayed.
+	CurrentPage int
+	// TotalPages is the document's total page count (model.Document.PageCount),
+	// driving the pagination nav 1:1 with actual PDF pages — not just pages
+	// that happen to have chunks.
+	TotalPages         int
 	Documents          []model.Document
 	SelectedDocumentID string
 	HasSelection       bool
 	// PDFURL is a presigned GET URL for the selected document's raw file,
 	// only set when that document is a PDF — the viewer pane is PDF-only.
 	PDFURL string
-}
-
-// totalPages computes the total number of pages.
-func totalPages(totalItems, perPage int) int {
-	if perPage <= 0 {
-		return 1
-	}
-	return int(math.Ceil(float64(totalItems) / float64(perPage)))
 }
 
 // documentTitle returns the display title: Title if set, otherwise Filename.
@@ -85,32 +83,28 @@ templ List(data ListPageData) {
 		} else {
 			<div class="grid grid-cols-[minmax(0,1fr)_640px] gap-6 items-start">
 				<div class="min-w-0 overflow-x-auto">
-					if len(data.Results.Items) == 0 {
+					if data.TotalPages <= 0 {
 						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
-							<p class="text-sm">No chunks for this document.</p>
+							<p class="text-sm">No chunks for this document yet.</p>
 						</div>
 					} else {
-						@tooltip.Script()
-						@table.Table() {
-							@table.Header() {
-								@table.Row() {
-									@table.Head() { Seq }
-									@table.Head() { Layout Type }
-									@table.Head() { Language }
-									@table.Head() { Text }
-								}
-							}
-							@table.Body() {
-								for _, group := range data.Results.Items {
-									@table.Row(table.RowProps{Class: "bg-muted/50 hover:bg-muted/50"}) {
-										@table.Cell(table.CellProps{
-											Class:      "font-medium",
-											Attributes: templ.Attributes{"colspan": "4"},
-										}) {
-											{ fmt.Sprintf("Page %d — %d chunks", group.Page, len(group.Chunks)) }
-										}
+						if len(data.Chunks) == 0 {
+							<div class="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+								<p class="text-sm">No chunks detected on this page.</p>
+							</div>
+						} else {
+							@tooltip.Script()
+							@table.Table() {
+								@table.Header() {
+									@table.Row() {
+										@table.Head() { Seq }
+										@table.Head() { Layout Type }
+										@table.Head() { Language }
+										@table.Head() { Text }
 									}
-									for _, chunk := range group.Chunks {
+								}
+								@table.Body() {
+									for _, chunk := range data.Chunks {
 										@table.Row(table.RowProps{
 											Class: "chunk-row cursor-pointer",
 											Attributes: templ.Attributes{
@@ -146,65 +140,65 @@ templ List(data ListPageData) {
 									}
 								}
 							}
-						}
-						<script type="module">
-							const viewer = document.getElementById('chunk-pdf-viewer');
-							let pinnedRow = null;
+							<script type="module">
+								const viewer = document.getElementById('chunk-pdf-viewer');
+								let pinnedRow = null;
 
-							function clearHighlight() {
-								if (!viewer) return;
-								viewer.setAttribute('lefts', '');
-								viewer.setAttribute('bottoms', '');
-								viewer.setAttribute('rights', '');
-								viewer.setAttribute('tops', '');
-							}
+								function clearHighlight() {
+									if (!viewer) return;
+									viewer.setAttribute('lefts', '');
+									viewer.setAttribute('bottoms', '');
+									viewer.setAttribute('rights', '');
+									viewer.setAttribute('tops', '');
+								}
 
-							async function applyChunk(row) {
-								if (!viewer) return;
-								const { doclingBboxesToProps } = await import('/static/js/pdf-bbox-viewer.js');
-								const page = row.dataset.page;
-								const bbox = (row.dataset.bbox || '').split(',').map(Number);
-								if (bbox.length !== 4 || bbox.some(Number.isNaN)) return;
-								const attrs = doclingBboxesToProps([bbox]);
-								viewer.setAttribute('page-number', page);
-								viewer.setAttribute('lefts', attrs.lefts);
-								viewer.setAttribute('bottoms', attrs.bottoms);
-								viewer.setAttribute('rights', attrs.rights);
-								viewer.setAttribute('tops', attrs.tops);
-							}
+								async function applyChunk(row) {
+									if (!viewer) return;
+									const { doclingBboxesToProps } = await import('/static/js/pdf-bbox-viewer.js');
+									const page = row.dataset.page;
+									const bbox = (row.dataset.bbox || '').split(',').map(Number);
+									if (bbox.length !== 4 || bbox.some(Number.isNaN)) return;
+									const attrs = doclingBboxesToProps([bbox]);
+									viewer.setAttribute('page-number', page);
+									viewer.setAttribute('lefts', attrs.lefts);
+									viewer.setAttribute('bottoms', attrs.bottoms);
+									viewer.setAttribute('rights', attrs.rights);
+									viewer.setAttribute('tops', attrs.tops);
+								}
 
-							document.querySelectorAll('.chunk-row').forEach((row) => {
-								row.addEventListener('mouseenter', () => {
-									applyChunk(row);
-									if (row !== pinnedRow) {
+								document.querySelectorAll('.chunk-row').forEach((row) => {
+									row.addEventListener('mouseenter', () => {
+										applyChunk(row);
+										if (row !== pinnedRow) {
+											row.style.backgroundColor = 'var(--muted)';
+										}
+									});
+									row.addEventListener('mouseleave', () => {
+										if (row !== pinnedRow) {
+											row.style.backgroundColor = '';
+										}
+										if (pinnedRow) {
+											applyChunk(pinnedRow);
+										} else {
+											clearHighlight();
+										}
+									});
+									row.addEventListener('click', () => {
+										if (pinnedRow) {
+											pinnedRow.style.backgroundColor = '';
+											pinnedRow.style.boxShadow = '';
+										}
+										pinnedRow = row;
 										row.style.backgroundColor = 'var(--muted)';
-									}
+										row.style.boxShadow = 'inset 3px 0 0 0 var(--primary)';
+										applyChunk(row);
+									});
 								});
-								row.addEventListener('mouseleave', () => {
-									if (row !== pinnedRow) {
-										row.style.backgroundColor = '';
-									}
-									if (pinnedRow) {
-										applyChunk(pinnedRow);
-									} else {
-										clearHighlight();
-									}
-								});
-								row.addEventListener('click', () => {
-									if (pinnedRow) {
-										pinnedRow.style.backgroundColor = '';
-										pinnedRow.style.boxShadow = '';
-									}
-									pinnedRow = row;
-									row.style.backgroundColor = 'var(--muted)';
-									row.style.boxShadow = 'inset 3px 0 0 0 var(--primary)';
-									applyChunk(row);
-								});
-							});
-						</script>
-						{{ pages := pagination.CreatePagination(data.Results.Page, totalPages(data.Results.TotalItems, data.Results.PerPage), 7) }}
+							</script>
+						}
+						{{ pages := pagination.CreatePagination(data.CurrentPage, data.TotalPages, 7) }}
 						if pages.TotalPages > 1 {
-							<div class="mt-6 flex justify-center">
+							<div class="mt-6 flex justify-start">
 								@pagination.Pagination() {
 									@pagination.Content() {
 										@pagination.Item() {
@@ -235,11 +229,11 @@ templ List(data ListPageData) {
 						}
 					}
 				</div>
-				<div class="min-w-0 border-l pl-6">
+				<div class="min-w-0 border-l pl-6 sticky top-6 self-start">
 					if data.PDFURL != "" {
 						<script type="module" src="/static/js/pdf-bbox-viewer.js"></script>
 						<div class="max-h-[85vh] overflow-auto rounded-md border">
-							<pdf-bbox-viewer id="chunk-pdf-viewer" url={ data.PDFURL } scale="1.1"></pdf-bbox-viewer>
+							<pdf-bbox-viewer id="chunk-pdf-viewer" url={ data.PDFURL } scale="1.1" page-number={ fmt.Sprintf("%d", data.CurrentPage) }></pdf-bbox-viewer>
 						</div>
 					} else {
 						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2 text-center">

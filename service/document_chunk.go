@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kairosedubf/wobsongo/data"
-	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 )
 
@@ -20,13 +19,12 @@ func NewDocumentChunkService(repo data.DocumentChunkRepoer) *DocumentChunkServic
 	return &DocumentChunkService{repo: repo}
 }
 
-// ListGroupedByPage retrieves a paginated set of a document's pages, each
-// with its chunks grouped underneath, ordered by page ASC then
-// SequenceNumber ASC.
-func (s *DocumentChunkService) ListGroupedByPage(
+// ListByPage retrieves a document's chunks on exactly one page, ordered by
+// SequenceNumber.
+func (s *DocumentChunkService) ListByPage(
 	ctx context.Context,
 	documentID uuid.UUID,
-	pagination *dto.PaginationDTO,
-) (*dto.PaginationResults[model.DocumentChunkPage], error) {
-	return s.repo.PaginateGroupedByPage(ctx, documentID, pagination)
+	page int,
+) ([]model.DocumentChunk, error) {
+	return s.repo.ListByDocumentIDAndPage(ctx, documentID, page)
 }

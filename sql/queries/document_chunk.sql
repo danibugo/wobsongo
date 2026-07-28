@@ -4,16 +4,10 @@ SELECT * FROM document_chunks WHERE id = $1;
 -- name: ListDocumentChunksByDocumentID :many
 SELECT * FROM document_chunks WHERE document_id = $1 ORDER BY sequence_number ASC;
 
--- name: ListDistinctPagesByDocumentID :many
-SELECT DISTINCT page FROM document_chunks WHERE document_id = $1 ORDER BY page ASC LIMIT $2 OFFSET $3;
-
--- name: CountDistinctPagesByDocumentID :one
-SELECT count(DISTINCT page) FROM document_chunks WHERE document_id = $1;
-
--- name: ListDocumentChunksByDocumentIDAndPages :many
+-- name: ListDocumentChunksByDocumentIDAndPage :many
 SELECT * FROM document_chunks
-WHERE document_id = $1 AND page = ANY(sqlc.arg(pages)::int[])
-ORDER BY page ASC, sequence_number ASC;
+WHERE document_id = $1 AND page = $2
+ORDER BY sequence_number ASC;
 
 -- name: ListChunksNeedingEmbedding :many
 SELECT * FROM document_chunks

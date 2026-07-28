@@ -14,17 +14,6 @@ import (
 	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
-const countDistinctPagesByDocumentID = `-- name: CountDistinctPagesByDocumentID :one
-SELECT count(DISTINCT page) FROM document_chunks WHERE document_id = $1
-`
-
-func (q *Queries) CountDistinctPagesByDocumentID(ctx context.Context, documentID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countDistinctPagesByDocumentID, documentID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 type CreateDocumentChunksBatchParams struct {
 	ID              uuid.UUID
 	CreatedAt       time.Time
@@ -212,36 +201,6 @@ func (q *Queries) ListChunksNeedingTranslation(ctx context.Context, documentID u
 	return items, nil
 }
 
-const listDistinctPagesByDocumentID = `-- name: ListDistinctPagesByDocumentID :many
-SELECT DISTINCT page FROM document_chunks WHERE document_id = $1 ORDER BY page ASC LIMIT $2 OFFSET $3
-`
-
-type ListDistinctPagesByDocumentIDParams struct {
-	DocumentID uuid.UUID
-	Limit      int32
-	Offset     int32
-}
-
-func (q *Queries) ListDistinctPagesByDocumentID(ctx context.Context, arg ListDistinctPagesByDocumentIDParams) ([]int32, error) {
-	rows, err := q.db.Query(ctx, listDistinctPagesByDocumentID, arg.DocumentID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int32
-	for rows.Next() {
-		var page int32
-		if err := rows.Scan(&page); err != nil {
-			return nil, err
-		}
-		items = append(items, page)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listDocumentChunksByDocumentID = `-- name: ListDocumentChunksByDocumentID :many
 SELECT id, created_at, updated_at, document_id, sequence_number, topics, factuality_score, text, page, chapter, layout_type, bounding_box, asset_url, embedding, knowledge_extracted_at, language, text_translated, text_fts_en, text_fts_fr FROM document_chunks WHERE document_id = $1 ORDER BY sequence_number ASC
 `
@@ -286,19 +245,19 @@ func (q *Queries) ListDocumentChunksByDocumentID(ctx context.Context, documentID
 	return items, nil
 }
 
-const listDocumentChunksByDocumentIDAndPages = `-- name: ListDocumentChunksByDocumentIDAndPages :many
+const listDocumentChunksByDocumentIDAndPage = `-- name: ListDocumentChunksByDocumentIDAndPage :many
 SELECT id, created_at, updated_at, document_id, sequence_number, topics, factuality_score, text, page, chapter, layout_type, bounding_box, asset_url, embedding, knowledge_extracted_at, language, text_translated, text_fts_en, text_fts_fr FROM document_chunks
-WHERE document_id = $1 AND page = ANY($2::int[])
-ORDER BY page ASC, sequence_number ASC
+WHERE document_id = $1 AND page = $2
+ORDER BY sequence_number ASC
 `
 
-type ListDocumentChunksByDocumentIDAndPagesParams struct {
+type ListDocumentChunksByDocumentIDAndPageParams struct {
 	DocumentID uuid.UUID
-	Pages      []int32
+	Page       int32
 }
 
-func (q *Queries) ListDocumentChunksByDocumentIDAndPages(ctx context.Context, arg ListDocumentChunksByDocumentIDAndPagesParams) ([]DocumentChunk, error) {
-	rows, err := q.db.Query(ctx, listDocumentChunksByDocumentIDAndPages, arg.DocumentID, arg.Pages)
+func (q *Queries) ListDocumentChunksByDocumentIDAndPage(ctx context.Context, arg ListDocumentChunksByDocumentIDAndPageParams) ([]DocumentChunk, error) {
+	rows, err := q.db.Query(ctx, listDocumentChunksByDocumentIDAndPage, arg.DocumentID, arg.Page)
 	if err != nil {
 		return nil, err
 	}
