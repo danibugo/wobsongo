@@ -3,8 +3,8 @@ package webhandler
 import (
 	"net/http"
 
-	"github.com/kairosedubf/wobsongo/config"
 	authpkg "github.com/kairosedubf/wobsongo/auth"
+	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/service"
 	"github.com/labstack/echo/v4"
@@ -12,9 +12,11 @@ import (
 
 // WebRepos holds the repo implementations for the HTML layer.
 type WebRepos struct {
-	UserRepo     data.UserRepoer
-	DocumentRepo data.DocumentRepoer
-	RawStore     data.RawObjectStore
+	UserRepo      data.UserRepoer
+	DocumentRepo  data.DocumentRepoer
+	RawStore      data.RawObjectStore
+	ChunkRepo     data.DocumentChunkRepoer
+	KnowledgeRepo data.AtomicKnowledgeRepoer
 }
 
 // RegisterWebRoutes mounts all HTML routes onto the given Echo group.
@@ -51,4 +53,12 @@ func RegisterWebRoutes(
 	protected.GET("/documents/:id/edit", docHandler.editPage)
 	protected.POST("/documents/:id/edit", docHandler.updatePost)
 	protected.POST("/documents/:id/delete", docHandler.deletePost)
+
+	chunkSvc := service.NewDocumentChunkService(repos.ChunkRepo)
+	chunkHandler := NewDocumentChunkWebHandler(chunkSvc, documentSvc)
+	protected.GET("/chunks", chunkHandler.listPage)
+
+	knowledgeSvc := service.NewAtomicKnowledgeService(repos.KnowledgeRepo)
+	knowledgeHandler := NewAtomicKnowledgeWebHandler(knowledgeSvc, documentSvc)
+	protected.GET("/knowledge", knowledgeHandler.listPage)
 }

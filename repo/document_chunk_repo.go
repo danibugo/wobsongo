@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kairosedubf/wobsongo/data"
-	"github.com/kairosedubf/wobsongo/db"
-	"github.com/kairosedubf/wobsongo/model"
-	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/db"
+	"github.com/kairosedubf/wobsongo/dto"
+	"github.com/kairosedubf/wobsongo/model"
+	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/pgvector/pgvector-go"
 	"github.com/riverqueue/river"
 )
@@ -134,6 +135,50 @@ func (r *DocumentChunkRepo) ListChunksNeedingTranslation(
 		chunks = append(chunks, *toModelDocumentChunk(&rows[i]))
 	}
 	return chunks, nil
+}
+
+// PaginateByDocumentID retrieves a paginated page of chunks for a single
+// document, ordered by SequenceNumber.
+func (r *DocumentChunkRepo) PaginateByDocumentID(
+	ctx context.Context,
+	documentID uuid.UUID,
+	q data.SupportsPagination,
+) (*dto.PaginationResults[model.DocumentChunk], error) {
+	limit, offset := q.Limit(), q.Offset()
+
+	rows, err := r.q.PaginateDocumentChunksByDocumentID(
+		ctx,
+		db.PaginateDocumentChunksByDocumentIDParams{
+			DocumentID: documentID,
+			Limit:      limit,
+			Offset:     offset,
+		},
+	)
+	if err != nil {
+		return nil, mapPostgresError(err)
+	}
+
+	total, err := r.q.CountDocumentChunksByDocumentID(ctx, documentID)
+	if err != nil {
+		return nil, mapPostgresError(err)
+	}
+
+	chunks := make([]model.DocumentChunk, 0, len(rows))
+	for i := range rows {
+		chunks = append(chunks, *toModelDocumentChunk(&rows[i]))
+	}
+
+	page := int32(1)
+	if limit > 0 {
+		page = offset/limit + 1
+	}
+
+	return &dto.PaginationResults[model.DocumentChunk]{
+		Page:       int(page),
+		PerPage:    int(limit),
+		TotalItems: int(total),
+		Items:      chunks,
+	}, nil
 }
 
 // UpdateChunkTranslation persists a chunk's translated text.

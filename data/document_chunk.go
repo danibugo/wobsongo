@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/queue"
 )
@@ -18,6 +19,16 @@ type DocumentChunkRepoer interface {
 
 	// ListByDocumentID retrieves all chunks for a document, ordered by SequenceNumber.
 	ListByDocumentID(ctx context.Context, documentID uuid.UUID) ([]model.DocumentChunk, error)
+
+	// PaginateByDocumentID retrieves a paginated page of chunks for a single
+	// document, ordered by SequenceNumber. Distinct from Crudable.Paginate
+	// (which this repo deliberately doesn't implement, see the type doc
+	// comment above) — pagination here is always scoped to one document.
+	PaginateByDocumentID(
+		ctx context.Context,
+		documentID uuid.UUID,
+		q SupportsPagination,
+	) (*dto.PaginationResults[model.DocumentChunk], error)
 
 	// ListChunksNeedingEmbedding retrieves chunks for a document that have
 	// text but no embedding yet, ordered by SequenceNumber. Used by

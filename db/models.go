@@ -82,21 +82,3 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
-
-type Video struct {
-	ID                uuid.UUID
-	VideoUrl          string
-	AuthorUsername    string
-	AuthorProfileUrl  string
-	Caption           pgtype.Text
-	PlayCount         pgtype.Int8
-	LikeCount         pgtype.Int8
-	ThumbnailUrl      string
-	LocationCreated   pgtype.Text
-	VideoCreatedAt    pgtype.Timestamptz
-	TranscriptionText pgtype.Text
-	Hashtags          []string
-	VideoType         string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}

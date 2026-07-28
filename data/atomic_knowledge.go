@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 )
 
@@ -29,6 +30,16 @@ type AtomicKnowledgeRepoer interface {
 	// embedding yet. Used by EmbedKnowledgeWorker; the filter also makes
 	// retries idempotent — a fact already embedded is never returned again.
 	ListNeedingEmbedding(ctx context.Context, documentID uuid.UUID) ([]model.AtomicKnowledge, error)
+
+	// PaginateByDocumentID retrieves a paginated page of facts for a single
+	// document, ordered most-recent first. Distinct from Crudable.Paginate
+	// (which this repo deliberately doesn't implement, see the type doc
+	// comment above) — pagination here is always scoped to one document.
+	PaginateByDocumentID(
+		ctx context.Context,
+		documentID uuid.UUID,
+		q SupportsPagination,
+	) (*dto.PaginationResults[model.AtomicKnowledge], error)
 
 	// UpdateEmbedding persists the embedding vector for a single fact.
 	UpdateEmbedding(ctx context.Context, id uuid.UUID, embedding []float32) error

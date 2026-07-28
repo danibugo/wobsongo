@@ -4,6 +4,12 @@ SELECT * FROM document_chunks WHERE id = $1;
 -- name: ListDocumentChunksByDocumentID :many
 SELECT * FROM document_chunks WHERE document_id = $1 ORDER BY sequence_number ASC;
 
+-- name: PaginateDocumentChunksByDocumentID :many
+SELECT * FROM document_chunks WHERE document_id = $1 ORDER BY sequence_number ASC LIMIT $2 OFFSET $3;
+
+-- name: CountDocumentChunksByDocumentID :one
+SELECT count(*) FROM document_chunks WHERE document_id = $1;
+
 -- name: ListChunksNeedingEmbedding :many
 SELECT * FROM document_chunks
 WHERE document_id = $1 AND text != '' AND embedding IS NULL

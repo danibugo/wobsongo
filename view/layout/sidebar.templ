@@ -61,8 +61,21 @@ templ Sidebar(data AppLayoutData) {
 					@navItem("/dashboard", "Dashboard", strings.HasPrefix(data.CurrentPath, "/dashboard")) {
 						@lucide.LayoutDashboard(templ.Attributes{"class": "size-4 shrink-0"})
 					}
+				}
+			}
+			@sidebar.Group(sidebar.GroupProps{Class: "py-1"}) {
+				@sidebar.GroupLabel() {
+					Documents
+				}
+				@sidebar.Menu() {
 					@navItem("/documents", "Documents", strings.HasPrefix(data.CurrentPath, "/documents")) {
 						@lucide.FileText(templ.Attributes{"class": "size-4 shrink-0"})
+					}
+					@navItem("/chunks", "Chunks", strings.HasPrefix(data.CurrentPath, "/chunks")) {
+						@lucide.Layers(templ.Attributes{"class": "size-4 shrink-0"})
+					}
+					@navItem("/knowledge", "Knowledge", strings.HasPrefix(data.CurrentPath, "/knowledge")) {
+						@lucide.Lightbulb(templ.Attributes{"class": "size-4 shrink-0"})
 					}
 				}
 			}

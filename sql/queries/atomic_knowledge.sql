@@ -15,5 +15,11 @@ SELECT * FROM atomic_knowledge
 WHERE document_id = $1 AND embedding IS NULL
 ORDER BY created_at ASC;
 
+-- name: PaginateAtomicKnowledgeByDocumentID :many
+SELECT * FROM atomic_knowledge WHERE document_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
+
+-- name: CountAtomicKnowledgeByDocumentID :one
+SELECT count(*) FROM atomic_knowledge WHERE document_id = $1;
+
 -- name: UpdateAtomicKnowledgeEmbedding :exec
 UPDATE atomic_knowledge SET embedding = $2, updated_at = $3 WHERE id = $1;

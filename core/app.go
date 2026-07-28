@@ -188,9 +188,11 @@ func NewApp(e *echo.Echo, config *config.Config, optionFuncs ...AppOption) *App 
 	webhandler.RegisterWebRoutes(
 		webGroup,
 		&webhandler.WebRepos{
-			UserRepo:     app.userRepo,
-			DocumentRepo: app.documentRepo,
-			RawStore:     app.rawStore,
+			UserRepo:      app.userRepo,
+			DocumentRepo:  app.documentRepo,
+			RawStore:      app.rawStore,
+			ChunkRepo:     app.chunkRepo,
+			KnowledgeRepo: app.knowledgeRepo,
 		},
 		jwtAuth, config,
 	)
