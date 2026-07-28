@@ -20,11 +20,13 @@ func NewDocumentChunkService(repo data.DocumentChunkRepoer) *DocumentChunkServic
 	return &DocumentChunkService{repo: repo}
 }
 
-// List retrieves a paginated page of chunks for a single document.
-func (s *DocumentChunkService) List(
+// ListGroupedByPage retrieves a paginated set of a document's pages, each
+// with its chunks grouped underneath, ordered by page ASC then
+// SequenceNumber ASC.
+func (s *DocumentChunkService) ListGroupedByPage(
 	ctx context.Context,
 	documentID uuid.UUID,
 	pagination *dto.PaginationDTO,
-) (*dto.PaginationResults[model.DocumentChunk], error) {
-	return s.repo.PaginateByDocumentID(ctx, documentID, pagination)
+) (*dto.PaginationResults[model.DocumentChunkPage], error) {
+	return s.repo.PaginateGroupedByPage(ctx, documentID, pagination)
 }

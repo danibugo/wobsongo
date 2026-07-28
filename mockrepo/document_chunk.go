@@ -47,8 +47,8 @@ var _ data.DocumentChunkRepoer = &DocumentChunkRepoerMock{}
 //			ListDocumentIDsNeedingTranslationFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 //				panic("mock out the ListDocumentIDsNeedingTranslation method")
 //			},
-//			PaginateByDocumentIDFunc: func(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.DocumentChunk], error) {
-//				panic("mock out the PaginateByDocumentID method")
+//			PaginateGroupedByPageFunc: func(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.DocumentChunkPage], error) {
+//				panic("mock out the PaginateGroupedByPage method")
 //			},
 //			SearchByEmbeddingFunc: func(ctx context.Context, queryVector []float32, limit int) ([]data.ScoredResult[model.DocumentChunk], error) {
 //				panic("mock out the SearchByEmbedding method")
@@ -99,8 +99,8 @@ type DocumentChunkRepoerMock struct {
 	// ListDocumentIDsNeedingTranslationFunc mocks the ListDocumentIDsNeedingTranslation method.
 	ListDocumentIDsNeedingTranslationFunc func(ctx context.Context) ([]uuid.UUID, error)
 
-	// PaginateByDocumentIDFunc mocks the PaginateByDocumentID method.
-	PaginateByDocumentIDFunc func(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.DocumentChunk], error)
+	// PaginateGroupedByPageFunc mocks the PaginateGroupedByPage method.
+	PaginateGroupedByPageFunc func(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.DocumentChunkPage], error)
 
 	// SearchByEmbeddingFunc mocks the SearchByEmbedding method.
 	SearchByEmbeddingFunc func(ctx context.Context, queryVector []float32, limit int) ([]data.ScoredResult[model.DocumentChunk], error)
@@ -176,8 +176,8 @@ type DocumentChunkRepoerMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// PaginateByDocumentID holds details about calls to the PaginateByDocumentID method.
-		PaginateByDocumentID []struct {
+		// PaginateGroupedByPage holds details about calls to the PaginateGroupedByPage method.
+		PaginateGroupedByPage []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// DocumentID is the documentID argument value.
@@ -244,7 +244,7 @@ type DocumentChunkRepoerMock struct {
 	lockListChunksNeedingKnowledgeExtraction sync.RWMutex
 	lockListChunksNeedingTranslation         sync.RWMutex
 	lockListDocumentIDsNeedingTranslation    sync.RWMutex
-	lockPaginateByDocumentID                 sync.RWMutex
+	lockPaginateGroupedByPage                sync.RWMutex
 	lockSearchByEmbedding                    sync.RWMutex
 	lockSearchByFullText                     sync.RWMutex
 	lockShouldBeStored                       sync.RWMutex
@@ -537,10 +537,10 @@ func (mock *DocumentChunkRepoerMock) ListDocumentIDsNeedingTranslationCalls() []
 	return calls
 }
 
-// PaginateByDocumentID calls PaginateByDocumentIDFunc.
-func (mock *DocumentChunkRepoerMock) PaginateByDocumentID(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.DocumentChunk], error) {
-	if mock.PaginateByDocumentIDFunc == nil {
-		panic("DocumentChunkRepoerMock.PaginateByDocumentIDFunc: method is nil but DocumentChunkRepoer.PaginateByDocumentID was just called")
+// PaginateGroupedByPage calls PaginateGroupedByPageFunc.
+func (mock *DocumentChunkRepoerMock) PaginateGroupedByPage(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.DocumentChunkPage], error) {
+	if mock.PaginateGroupedByPageFunc == nil {
+		panic("DocumentChunkRepoerMock.PaginateGroupedByPageFunc: method is nil but DocumentChunkRepoer.PaginateGroupedByPage was just called")
 	}
 	callInfo := struct {
 		Ctx        context.Context
@@ -551,17 +551,17 @@ func (mock *DocumentChunkRepoerMock) PaginateByDocumentID(ctx context.Context, d
 		DocumentID: documentID,
 		Q:          q,
 	}
-	mock.lockPaginateByDocumentID.Lock()
-	mock.calls.PaginateByDocumentID = append(mock.calls.PaginateByDocumentID, callInfo)
-	mock.lockPaginateByDocumentID.Unlock()
-	return mock.PaginateByDocumentIDFunc(ctx, documentID, q)
+	mock.lockPaginateGroupedByPage.Lock()
+	mock.calls.PaginateGroupedByPage = append(mock.calls.PaginateGroupedByPage, callInfo)
+	mock.lockPaginateGroupedByPage.Unlock()
+	return mock.PaginateGroupedByPageFunc(ctx, documentID, q)
 }
 
-// PaginateByDocumentIDCalls gets all the calls that were made to PaginateByDocumentID.
+// PaginateGroupedByPageCalls gets all the calls that were made to PaginateGroupedByPage.
 // Check the length with:
 //
-//	len(mockedDocumentChunkRepoer.PaginateByDocumentIDCalls())
-func (mock *DocumentChunkRepoerMock) PaginateByDocumentIDCalls() []struct {
+//	len(mockedDocumentChunkRepoer.PaginateGroupedByPageCalls())
+func (mock *DocumentChunkRepoerMock) PaginateGroupedByPageCalls() []struct {
 	Ctx        context.Context
 	DocumentID uuid.UUID
 	Q          data.SupportsPagination
@@ -571,9 +571,9 @@ func (mock *DocumentChunkRepoerMock) PaginateByDocumentIDCalls() []struct {
 		DocumentID uuid.UUID
 		Q          data.SupportsPagination
 	}
-	mock.lockPaginateByDocumentID.RLock()
-	calls = mock.calls.PaginateByDocumentID
-	mock.lockPaginateByDocumentID.RUnlock()
+	mock.lockPaginateGroupedByPage.RLock()
+	calls = mock.calls.PaginateGroupedByPage
+	mock.lockPaginateGroupedByPage.RUnlock()
 	return calls
 }
 

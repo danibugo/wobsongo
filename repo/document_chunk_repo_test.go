@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
+	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/kairosedubf/wobsongo/repo"
@@ -82,6 +83,97 @@ func TestDocumentChunkRepo_CRUD(t *testing.T) {
 			}
 			if got[0].SequenceNumber != 0 || got[1].SequenceNumber != 1 {
 				t.Errorf("expected chunks ordered by sequence number, got %+v", got)
+			}
+		})
+	})
+
+	t.Run("PaginateGroupedByPage_GroupsAndOrdersByPage", func(t *testing.T) {
+		testhelpers.WithTxRollback(t, pool, func(ctx context.Context, q *db.Queries) {
+			documentRepo := repo.NewDocumentRepo(q, pool, nil)
+			doc := newTestDocument(uuid.NewString())
+			if err := documentRepo.Create(ctx, doc); err != nil {
+				t.Fatalf("unexpected error creating parent document: %v", err)
+			}
+
+			chunkRepo := repo.NewDocumentChunkRepo(q, pool, nil)
+
+			// Mirrors the real picture-chunk scenario: page 2's chunk got a
+			// much higher sequence_number (assigned after every text/table
+			// chunk in the document) than page 3's, even though page 3
+			// comes later in the document. Grouping/ordering by page must
+			// not be fooled by this.
+			page1Chunk0 := newTestDocumentChunk(doc.ID, 0)
+			page1Chunk0.Page = 1
+			page1Chunk1 := newTestDocumentChunk(doc.ID, 1)
+			page1Chunk1.Page = 1
+			page2Picture := newTestDocumentChunk(doc.ID, 100)
+			page2Picture.Page = 2
+			page3Chunk := newTestDocumentChunk(doc.ID, 2)
+			page3Chunk.Page = 3
+
+			chunks := []model.DocumentChunk{page1Chunk0, page1Chunk1, page2Picture, page3Chunk}
+			if err := chunkRepo.CreateBatch(ctx, chunks); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			results, err := chunkRepo.PaginateGroupedByPage(
+				ctx,
+				doc.ID,
+				&dto.PaginationDTO{Page: 1, PerPage: 20},
+			)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if results.TotalItems != 3 {
+				t.Fatalf("expected 3 distinct pages, got %d", results.TotalItems)
+			}
+			if len(results.Items) != 3 {
+				t.Fatalf("expected 3 page groups, got %d", len(results.Items))
+			}
+
+			if results.Items[0].Page != 1 || len(results.Items[0].Chunks) != 2 {
+				t.Fatalf("expected page 1 with 2 chunks, got %+v", results.Items[0])
+			}
+			if results.Items[0].Chunks[0].SequenceNumber != 0 ||
+				results.Items[0].Chunks[1].SequenceNumber != 1 {
+				t.Errorf(
+					"expected page 1's chunks ordered by sequence number, got %+v",
+					results.Items[0].Chunks,
+				)
+			}
+
+			if results.Items[1].Page != 2 || len(results.Items[1].Chunks) != 1 ||
+				results.Items[1].Chunks[0].SequenceNumber != 100 {
+				t.Errorf(
+					"expected page 2 (seq 100) to sort before page 3 despite its higher sequence number, got %+v",
+					results.Items[1],
+				)
+			}
+
+			if results.Items[2].Page != 3 || len(results.Items[2].Chunks) != 1 ||
+				results.Items[2].Chunks[0].SequenceNumber != 2 {
+				t.Errorf(
+					"expected page 3 (seq 2) last, ordered by page not sequence number, got %+v",
+					results.Items[2],
+				)
+			}
+
+			// PerPage now paginates over distinct pages, not chunk rows: page
+			// 2 of 1-per-screen should return only page 2's group.
+			page2Results, err := chunkRepo.PaginateGroupedByPage(
+				ctx,
+				doc.ID,
+				&dto.PaginationDTO{Page: 2, PerPage: 1},
+			)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if page2Results.TotalItems != 3 || len(page2Results.Items) != 1 ||
+				page2Results.Items[0].Page != 2 {
+				t.Fatalf(
+					"expected page-2-of-1-per-screen to return only document page 2, got %+v",
+					page2Results,
+				)
 			}
 		})
 	})

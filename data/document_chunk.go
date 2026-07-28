@@ -20,15 +20,18 @@ type DocumentChunkRepoer interface {
 	// ListByDocumentID retrieves all chunks for a document, ordered by SequenceNumber.
 	ListByDocumentID(ctx context.Context, documentID uuid.UUID) ([]model.DocumentChunk, error)
 
-	// PaginateByDocumentID retrieves a paginated page of chunks for a single
-	// document, ordered by SequenceNumber. Distinct from Crudable.Paginate
+	// PaginateGroupedByPage retrieves a paginated set of a document's pages
+	// (grouped by the page column), each with its chunks ordered by
+	// SequenceNumber, in page ASC order. Distinct from Crudable.Paginate
 	// (which this repo deliberately doesn't implement, see the type doc
-	// comment above) — pagination here is always scoped to one document.
-	PaginateByDocumentID(
+	// comment above) — pagination here is always scoped to one document, and
+	// is over distinct page numbers rather than chunk rows, so a page's
+	// chunks are never split across two screens.
+	PaginateGroupedByPage(
 		ctx context.Context,
 		documentID uuid.UUID,
 		q SupportsPagination,
-	) (*dto.PaginationResults[model.DocumentChunk], error)
+	) (*dto.PaginationResults[model.DocumentChunkPage], error)
 
 	// ListChunksNeedingEmbedding retrieves chunks for a document that have
 	// text but no embedding yet, ordered by SequenceNumber. Used by

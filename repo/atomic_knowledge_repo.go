@@ -97,8 +97,6 @@ func (r *AtomicKnowledgeRepo) ListNeedingEmbedding(
 
 // PaginateByDocumentID retrieves a paginated page of facts for a single
 // document, ordered most-recent first.
-//
-//nolint:dupl // intentional structural mirror of DocumentChunkRepo.PaginateByDocumentID for a distinct domain type
 func (r *AtomicKnowledgeRepo) PaginateByDocumentID(
 	ctx context.Context,
 	documentID uuid.UUID,

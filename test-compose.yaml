@@ -1,0 +1,20 @@
+name: "wobsongocore-test"
+services:
+  postgres:
+    # pgvector/pgvector ships the same postgres:18 base plus the pgvector
+    # extension pre-installed (document_chunks.embedding needs `CREATE
+    # EXTENSION vector`, which plain postgres:18-alpine can't provide).
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_PASSWORD: "LocalDev123"
+      POSTGRES_USER: "wobsongocoretest"
+      POSTGRES_DB: "wobsongocore_db"
+    ports:
+      - 45433:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "wobsongocoretest", "-d", "wobsongocore_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql

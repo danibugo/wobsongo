@@ -56,13 +56,13 @@ func (h *DocumentChunkWebHandler) listPage(c echo.Context) error {
 	}
 
 	documentIDParam := c.QueryParam("document_id")
-	var results dto.PaginationResults[model.DocumentChunk]
+	var results dto.PaginationResults[model.DocumentChunkPage]
 	var pdfURL string
 	hasSelection := false
 	if documentIDParam != "" {
 		if docID, parseErr := uuid.Parse(documentIDParam); parseErr == nil {
 			hasSelection = true
-			r, listErr := h.svc.List(ctx, docID, &pagination)
+			r, listErr := h.svc.ListGroupedByPage(ctx, docID, &pagination)
 			if listErr != nil {
 				return listErr
 			}

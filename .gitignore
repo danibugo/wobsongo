@@ -20,3 +20,4 @@ Thumbs.db
 # Go test cache
 *.test
 *.out
+*.profile

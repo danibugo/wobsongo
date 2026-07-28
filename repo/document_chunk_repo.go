@@ -137,20 +137,21 @@ func (r *DocumentChunkRepo) ListChunksNeedingTranslation(
 	return chunks, nil
 }
 
-// PaginateByDocumentID retrieves a paginated page of chunks for a single
-// document, ordered by SequenceNumber.
-//
-//nolint:dupl // intentional structural mirror of AtomicKnowledgeRepo.PaginateByDocumentID for a distinct domain type
-func (r *DocumentChunkRepo) PaginateByDocumentID(
+// PaginateGroupedByPage retrieves a paginated set of a document's pages
+// (grouped by the page column), each with its chunks ordered by
+// SequenceNumber, in page ASC order. Pagination is over distinct page
+// numbers, not chunk rows, so a page's chunks are never split across two
+// screens — see model.DocumentChunkPage.
+func (r *DocumentChunkRepo) PaginateGroupedByPage(
 	ctx context.Context,
 	documentID uuid.UUID,
 	q data.SupportsPagination,
-) (*dto.PaginationResults[model.DocumentChunk], error) {
+) (*dto.PaginationResults[model.DocumentChunkPage], error) {
 	limit, offset := q.Limit(), q.Offset()
 
-	rows, err := r.q.PaginateDocumentChunksByDocumentID(
+	pages, err := r.q.ListDistinctPagesByDocumentID(
 		ctx,
-		db.PaginateDocumentChunksByDocumentIDParams{
+		db.ListDistinctPagesByDocumentIDParams{
 			DocumentID: documentID,
 			Limit:      limit,
 			Offset:     offset,
@@ -160,14 +161,35 @@ func (r *DocumentChunkRepo) PaginateByDocumentID(
 		return nil, mapPostgresError(err)
 	}
 
-	total, err := r.q.CountDocumentChunksByDocumentID(ctx, documentID)
+	total, err := r.q.CountDistinctPagesByDocumentID(ctx, documentID)
 	if err != nil {
 		return nil, mapPostgresError(err)
 	}
 
-	chunks := make([]model.DocumentChunk, 0, len(rows))
-	for i := range rows {
-		chunks = append(chunks, *toModelDocumentChunk(&rows[i]))
+	groups := make([]model.DocumentChunkPage, len(pages))
+	for i, p := range pages {
+		groups[i] = model.DocumentChunkPage{Page: int(p)}
+	}
+
+	if len(pages) > 0 {
+		rows, err := r.q.ListDocumentChunksByDocumentIDAndPages(
+			ctx,
+			db.ListDocumentChunksByDocumentIDAndPagesParams{
+				DocumentID: documentID,
+				Pages:      pages,
+			},
+		)
+		if err != nil {
+			return nil, mapPostgresError(err)
+		}
+
+		byPage := make(map[int32][]model.DocumentChunk, len(pages))
+		for i := range rows {
+			byPage[rows[i].Page] = append(byPage[rows[i].Page], *toModelDocumentChunk(&rows[i]))
+		}
+		for i := range groups {
+			groups[i].Chunks = byPage[toInt32(groups[i].Page)]
+		}
 	}
 
 	page := int32(1)
@@ -175,11 +197,11 @@ func (r *DocumentChunkRepo) PaginateByDocumentID(
 		page = offset/limit + 1
 	}
 
-	return &dto.PaginationResults[model.DocumentChunk]{
+	return &dto.PaginationResults[model.DocumentChunkPage]{
 		Page:       int(page),
 		PerPage:    int(limit),
 		TotalItems: int(total),
-		Items:      chunks,
+		Items:      groups,
 	}, nil
 }
 

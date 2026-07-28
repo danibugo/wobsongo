@@ -14,12 +14,12 @@ import (
 	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
-const countDocumentChunksByDocumentID = `-- name: CountDocumentChunksByDocumentID :one
-SELECT count(*) FROM document_chunks WHERE document_id = $1
+const countDistinctPagesByDocumentID = `-- name: CountDistinctPagesByDocumentID :one
+SELECT count(DISTINCT page) FROM document_chunks WHERE document_id = $1
 `
 
-func (q *Queries) CountDocumentChunksByDocumentID(ctx context.Context, documentID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countDocumentChunksByDocumentID, documentID)
+func (q *Queries) CountDistinctPagesByDocumentID(ctx context.Context, documentID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDistinctPagesByDocumentID, documentID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -212,12 +212,93 @@ func (q *Queries) ListChunksNeedingTranslation(ctx context.Context, documentID u
 	return items, nil
 }
 
+const listDistinctPagesByDocumentID = `-- name: ListDistinctPagesByDocumentID :many
+SELECT DISTINCT page FROM document_chunks WHERE document_id = $1 ORDER BY page ASC LIMIT $2 OFFSET $3
+`
+
+type ListDistinctPagesByDocumentIDParams struct {
+	DocumentID uuid.UUID
+	Limit      int32
+	Offset     int32
+}
+
+func (q *Queries) ListDistinctPagesByDocumentID(ctx context.Context, arg ListDistinctPagesByDocumentIDParams) ([]int32, error) {
+	rows, err := q.db.Query(ctx, listDistinctPagesByDocumentID, arg.DocumentID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var page int32
+		if err := rows.Scan(&page); err != nil {
+			return nil, err
+		}
+		items = append(items, page)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocumentChunksByDocumentID = `-- name: ListDocumentChunksByDocumentID :many
 SELECT id, created_at, updated_at, document_id, sequence_number, topics, factuality_score, text, page, chapter, layout_type, bounding_box, asset_url, embedding, knowledge_extracted_at, language, text_translated, text_fts_en, text_fts_fr FROM document_chunks WHERE document_id = $1 ORDER BY sequence_number ASC
 `
 
 func (q *Queries) ListDocumentChunksByDocumentID(ctx context.Context, documentID uuid.UUID) ([]DocumentChunk, error) {
 	rows, err := q.db.Query(ctx, listDocumentChunksByDocumentID, documentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DocumentChunk
+	for rows.Next() {
+		var i DocumentChunk
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DocumentID,
+			&i.SequenceNumber,
+			&i.Topics,
+			&i.FactualityScore,
+			&i.Text,
+			&i.Page,
+			&i.Chapter,
+			&i.LayoutType,
+			&i.BoundingBox,
+			&i.AssetUrl,
+			&i.Embedding,
+			&i.KnowledgeExtractedAt,
+			&i.Language,
+			&i.TextTranslated,
+			&i.TextFtsEn,
+			&i.TextFtsFr,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDocumentChunksByDocumentIDAndPages = `-- name: ListDocumentChunksByDocumentIDAndPages :many
+SELECT id, created_at, updated_at, document_id, sequence_number, topics, factuality_score, text, page, chapter, layout_type, bounding_box, asset_url, embedding, knowledge_extracted_at, language, text_translated, text_fts_en, text_fts_fr FROM document_chunks
+WHERE document_id = $1 AND page = ANY($2::int[])
+ORDER BY page ASC, sequence_number ASC
+`
+
+type ListDocumentChunksByDocumentIDAndPagesParams struct {
+	DocumentID uuid.UUID
+	Pages      []int32
+}
+
+func (q *Queries) ListDocumentChunksByDocumentIDAndPages(ctx context.Context, arg ListDocumentChunksByDocumentIDAndPagesParams) ([]DocumentChunk, error) {
+	rows, err := q.db.Query(ctx, listDocumentChunksByDocumentIDAndPages, arg.DocumentID, arg.Pages)
 	if err != nil {
 		return nil, err
 	}
@@ -288,56 +369,6 @@ UPDATE document_chunks SET knowledge_extracted_at = now() WHERE id = $1
 func (q *Queries) MarkChunkKnowledgeExtracted(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markChunkKnowledgeExtracted, id)
 	return err
-}
-
-const paginateDocumentChunksByDocumentID = `-- name: PaginateDocumentChunksByDocumentID :many
-SELECT id, created_at, updated_at, document_id, sequence_number, topics, factuality_score, text, page, chapter, layout_type, bounding_box, asset_url, embedding, knowledge_extracted_at, language, text_translated, text_fts_en, text_fts_fr FROM document_chunks WHERE document_id = $1 ORDER BY sequence_number ASC LIMIT $2 OFFSET $3
-`
-
-type PaginateDocumentChunksByDocumentIDParams struct {
-	DocumentID uuid.UUID
-	Limit      int32
-	Offset     int32
-}
-
-func (q *Queries) PaginateDocumentChunksByDocumentID(ctx context.Context, arg PaginateDocumentChunksByDocumentIDParams) ([]DocumentChunk, error) {
-	rows, err := q.db.Query(ctx, paginateDocumentChunksByDocumentID, arg.DocumentID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []DocumentChunk
-	for rows.Next() {
-		var i DocumentChunk
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.DocumentID,
-			&i.SequenceNumber,
-			&i.Topics,
-			&i.FactualityScore,
-			&i.Text,
-			&i.Page,
-			&i.Chapter,
-			&i.LayoutType,
-			&i.BoundingBox,
-			&i.AssetUrl,
-			&i.Embedding,
-			&i.KnowledgeExtractedAt,
-			&i.Language,
-			&i.TextTranslated,
-			&i.TextFtsEn,
-			&i.TextFtsFr,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const updateChunkTranslation = `-- name: UpdateChunkTranslation :exec

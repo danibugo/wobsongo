@@ -16,7 +16,7 @@ import (
 // ListPageData holds the data for the chunk list page.
 type ListPageData struct {
 	layout.AppLayoutData
-	Results            dto.PaginationResults[model.DocumentChunk]
+	Results            dto.PaginationResults[model.DocumentChunkPage]
 	Documents          []model.Document
 	SelectedDocumentID string
 	HasSelection       bool
@@ -95,45 +95,51 @@ templ List(data ListPageData) {
 							@table.Header() {
 								@table.Row() {
 									@table.Head() { Seq }
-									@table.Head() { Page }
 									@table.Head() { Layout Type }
 									@table.Head() { Language }
 									@table.Head() { Text }
 								}
 							}
 							@table.Body() {
-								for _, chunk := range data.Results.Items {
-									@table.Row(table.RowProps{
-										Class: "chunk-row cursor-pointer",
-										Attributes: templ.Attributes{
-											"data-page": fmt.Sprintf("%d", chunk.Page),
-											"data-bbox": chunkBBox(chunk),
-										},
-									}) {
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											{ fmt.Sprintf("%d", chunk.SequenceNumber) }
+								for _, group := range data.Results.Items {
+									@table.Row(table.RowProps{Class: "bg-muted/50 hover:bg-muted/50"}) {
+										@table.Cell(table.CellProps{
+											Class:      "font-medium",
+											Attributes: templ.Attributes{"colspan": "4"},
+										}) {
+											{ fmt.Sprintf("Page %d — %d chunks", group.Page, len(group.Chunks)) }
 										}
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											{ fmt.Sprintf("%d", chunk.Page) }
-										}
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											{ string(chunk.LayoutType) }
-										}
-										@table.Cell() {
-											{ chunk.Language.String() }
-										}
-										@table.Cell(table.CellProps{Class: "max-w-[220px]"}) {
-											@tooltip.Tooltip() {
-												@tooltip.Trigger(tooltip.TriggerProps{}) {
-													<span class="block truncate cursor-help">{ textPreview(chunk.Text) }</span>
-												}
-												@tooltip.Content(tooltip.ContentProps{
-													Position:      tooltip.PositionTop,
-													Class:         "max-w-sm whitespace-pre-wrap break-words text-left",
-													HoverDelay:    200,
-													HoverOutDelay: 100,
-												}) {
-													{ chunk.Text }
+									}
+									for _, chunk := range group.Chunks {
+										@table.Row(table.RowProps{
+											Class: "chunk-row cursor-pointer",
+											Attributes: templ.Attributes{
+												"data-page": fmt.Sprintf("%d", chunk.Page),
+												"data-bbox": chunkBBox(chunk),
+											},
+										}) {
+											@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+												{ fmt.Sprintf("%d", chunk.SequenceNumber) }
+											}
+											@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+												{ string(chunk.LayoutType) }
+											}
+											@table.Cell() {
+												{ chunk.Language.String() }
+											}
+											@table.Cell(table.CellProps{Class: "max-w-[220px]"}) {
+												@tooltip.Tooltip() {
+													@tooltip.Trigger(tooltip.TriggerProps{}) {
+														<span class="block truncate cursor-help">{ textPreview(chunk.Text) }</span>
+													}
+													@tooltip.Content(tooltip.ContentProps{
+														Position:      tooltip.PositionTop,
+														Class:         "max-w-sm whitespace-pre-wrap break-words text-left",
+														HoverDelay:    200,
+														HoverOutDelay: 100,
+													}) {
+														{ chunk.Text }
+													}
 												}
 											}
 										}
