@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/riverqueue/river"
 )
 

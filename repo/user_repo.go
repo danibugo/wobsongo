@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/model"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // UserRepo is a Postgres-backed implementation of data.UserRepoer.

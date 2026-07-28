@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	pgxvec "github.com/pgvector/pgvector-go/pgx"
 )
@@ -18,8 +17,6 @@ func NewPgxPool(ctx context.Context, uri string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		return pgxvec.RegisterTypes(ctx, conn)
-	}
+	cfg.AfterConnect = pgxvec.RegisterTypes
 	return pgxpool.NewWithConfig(ctx, cfg)
 }

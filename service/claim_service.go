@@ -165,7 +165,8 @@ func (s *ClaimService) checkSubClaim(
 	}
 
 	evidence := make([]data.JudgeEvidence, len(hits))
-	for i, h := range hits {
+	for i := range hits {
+		h := &hits[i]
 		evidence[i] = data.JudgeEvidence{
 			Source:     h.Source,
 			Text:       h.Text,
@@ -263,6 +264,9 @@ func overallVerdictKey(results []SubClaimResult) string {
 			allSupported = false
 		case model.VerdictPartiallySupported:
 			allSupported = false
+		case model.VerdictSupported:
+			// No-op: allSupported already starts true and this verdict
+			// doesn't change any rollup flag.
 		}
 	}
 

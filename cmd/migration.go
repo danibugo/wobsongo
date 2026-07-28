@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	migrator "github.com/kairosedubf/wobsongo/sql/migrations"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
 	"github.com/spf13/cobra"

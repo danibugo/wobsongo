@@ -27,6 +27,9 @@ import (
 // more frequent timeout failures.
 const extractionMaxTokens = 6000
 
+// extractionChatRoleUser is the chat-completion message role for the caller's input.
+const extractionChatRoleUser = "user"
+
 // ExtractionClient implements data.KnowledgeExtractor against a generic
 // OpenAI-compatible text chat-completions API — works unmodified against
 // self-hosted vLLM/Ollama or any hosted provider using that shape.
@@ -95,7 +98,7 @@ func (c *ExtractionClient) Extract(
 	payload := extractionCompletionRequest{
 		Model: c.model,
 		Messages: []extractionChatMessage{
-			{Role: "user", Content: buildExtractionPrompt(req)},
+			{Role: extractionChatRoleUser, Content: buildExtractionPrompt(req)},
 		},
 		MaxTokens: extractionMaxTokens,
 	}
@@ -163,7 +166,8 @@ func (c *ExtractionClient) Extract(
 	}
 
 	facts := make([]data.ExtractedFact, 0, len(rawFacts))
-	for _, raw := range rawFacts {
+	for i := range rawFacts {
+		raw := &rawFacts[i]
 		tier, err := model.ParseTruthTier(raw.TruthTier)
 		if err != nil {
 			log.Printf(

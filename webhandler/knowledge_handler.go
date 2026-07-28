@@ -63,7 +63,7 @@ func (h *AtomicKnowledgeWebHandler) listPage(c echo.Context) error {
 		}
 	}
 
-	layoutData := buildAppLayout(c, "Knowledge", "")
+	layoutData := buildAppLayout(c, "Knowledge")
 	return knowledgeview.List(knowledgeview.ListPageData{
 		AppLayoutData:      layoutData,
 		Results:            results,

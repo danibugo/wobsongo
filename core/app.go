@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/auth"
+	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/handler"
+	"github.com/kairosedubf/wobsongo/ui"
 	"github.com/kairosedubf/wobsongo/validation"
 	"github.com/kairosedubf/wobsongo/webhandler"
-	"github.com/kairosedubf/wobsongo/ui"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -193,6 +193,7 @@ func NewApp(e *echo.Echo, config *config.Config, optionFuncs ...AppOption) *App 
 			RawStore:      app.rawStore,
 			ChunkRepo:     app.chunkRepo,
 			KnowledgeRepo: app.knowledgeRepo,
+			MediaProvider: app.mediaProvider,
 		},
 		jwtAuth, config,
 	)

@@ -14,6 +14,6 @@ func NewDashboardHandler() *DashboardHandler {
 }
 
 func (h *DashboardHandler) dashboardPage(c echo.Context) error {
-	layoutData := buildAppLayout(c, "Dashboard", "")
+	layoutData := buildAppLayout(c, "Dashboard")
 	return dashboardview.Index(layoutData).Render(c.Request().Context(), c.Response())
 }

@@ -9,6 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
+// unknownLabel is the canonical string form for an out-of-range TruthTier or
+// FactCategory value.
+const unknownLabel = "unknown"
+
 type TruthTier int
 
 const (
@@ -43,7 +47,7 @@ var truthTierNames = map[TruthTier]string{
 	TruthTierTemporal:      "temporal",
 	TruthTierProbabilistic: "probabilistic",
 	TruthTierSubjective:    "subjective",
-	TruthTierUnknown:       "unknown",
+	TruthTierUnknown:       unknownLabel,
 	TruthTierInvalid:       "invalid",
 }
 
@@ -53,7 +57,7 @@ func (t TruthTier) String() string {
 	if name, ok := truthTierNames[t]; ok {
 		return name
 	}
-	return "unknown"
+	return unknownLabel
 }
 
 // ParseTruthTier parses s (case-insensitive) into a TruthTier, matching the
@@ -101,7 +105,7 @@ const (
 var factCategoryNames = map[FactCategory]string{
 	FactCategoryClinical: "clinical",
 	FactCategoryMetadata: "metadata",
-	FactCategoryUnknown:  "unknown",
+	FactCategoryUnknown:  unknownLabel,
 }
 
 // String returns c's canonical lowercase name, or "unknown" for an
@@ -110,7 +114,7 @@ func (c FactCategory) String() string {
 	if name, ok := factCategoryNames[c]; ok {
 		return name
 	}
-	return "unknown"
+	return unknownLabel
 }
 
 // ParseFactCategory parses s (case-insensitive) into a FactCategory,

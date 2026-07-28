@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/model"
 )
 

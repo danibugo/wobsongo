@@ -101,7 +101,7 @@ func (s *RAGService) Search(ctx context.Context, query string, limit int) ([]RAG
 	// errgroup.WithContext, not a plain group: unlike the LLM calls
 	// elsewhere in this codebase (where one slow/failing call shouldn't
 	// cancel its concurrently in-flight siblings), these are five fast local
-	// Postgres queries — if one fails, cancelling the rest and failing fast
+	// Postgres queries — if one fails, canceling the rest and failing fast
 	// is the right behavior, not wasted work.
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -226,10 +226,11 @@ func fuseRRF(lists ...[]RAGResult) []RAGResult {
 	methodSets := make(map[string]map[string]bool)
 
 	for _, list := range lists {
-		for rank, item := range list {
+		for rank := range list {
+			item := &list[rank]
 			scores[item.Key] += 1.0 / (rrfK + float64(rank+1))
 			if _, ok := seen[item.Key]; !ok {
-				seen[item.Key] = item
+				seen[item.Key] = *item
 				methodSets[item.Key] = make(map[string]bool)
 			}
 			for _, m := range item.Methods {
@@ -239,7 +240,7 @@ func fuseRRF(lists ...[]RAGResult) []RAGResult {
 	}
 
 	fused := make([]RAGResult, 0, len(seen))
-	for key, item := range seen {
+	for key, item := range seen { //nolint:gocritic // map values aren't addressable; copy-mutate-append is the pattern here, not an oversight
 		item.RRFScore = scores[key]
 
 		methods := make([]string, 0, len(methodSets[key]))

@@ -4,13 +4,13 @@ import (
 	"errors"
 	"os"
 
-	appconfig "github.com/kairosedubf/wobsongo/config"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/auth"
+	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/repo"
 	"github.com/kairosedubf/wobsongo/service"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/cobra"
 )
 
@@ -82,7 +82,7 @@ func runCreateSuperadmin(cmd *cobra.Command, _ []string) {
 		} else {
 			cmd.PrintErrf("Failed to create superadmin: %s\n", err.Error())
 		}
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic // process exit; same accepted pattern as cmd/server.go
 		return
 	}
 

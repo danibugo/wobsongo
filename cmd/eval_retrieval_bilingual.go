@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"slices"
@@ -81,50 +82,64 @@ func runEvalRetrievalBilingual(cmd *cobra.Command, args []string) {
 	ragService := service.NewRAGService(chunkRepo, knowledgeRepo, embeddingClient)
 
 	var passed, failed int
-	for _, fixture := range fixtures {
-		enHits, err := ragService.Search(ctx, fixture.EnglishQuery, bilingualEvalTopN)
-		if err != nil {
-			failed++
-			cmd.Printf("FAIL %s: English search failed: %s\n", fixture.Label, err.Error())
-			continue
-		}
-		frHits, err := ragService.Search(ctx, fixture.FrenchQuery, bilingualEvalTopN)
-		if err != nil {
-			failed++
-			cmd.Printf("FAIL %s: French search failed: %s\n", fixture.Label, err.Error())
-			continue
-		}
-
-		var missing []int
-		for _, page := range fixture.ExpectedPages {
-			if !pageFoundViaFullText(enHits, page) {
-				missing = append(missing, page)
-			}
-			if !pageFoundViaFullText(frHits, page) {
-				missing = append(missing, page)
-			}
-		}
-
-		if len(missing) == 0 {
+	for i := range fixtures {
+		if evalOneBilingualFixture(ctx, cmd, ragService, &fixtures[i]) {
 			passed++
-			cmd.Printf("PASS %s\n", fixture.Label)
-			continue
+		} else {
+			failed++
 		}
-
-		failed++
-		cmd.Printf(
-			"FAIL %s: expected pages %v via full-text match in both languages' top %d, missing/vector-only: %v\n",
-			fixture.Label,
-			fixture.ExpectedPages,
-			bilingualEvalTopN,
-			missing,
-		)
 	}
 
 	cmd.Printf("\n%d/%d passed\n", passed, len(fixtures))
 	if failed > 0 {
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic // process exit; same accepted pattern as cmd/server.go
 	}
+}
+
+// evalOneBilingualFixture runs both language versions of fixture's query
+// through ragService, printing a PASS/FAIL line, and reports whether it
+// passed — extracted from runEvalRetrievalBilingual so that function stays
+// focused on setup/teardown rather than per-fixture evaluation logic.
+func evalOneBilingualFixture(
+	ctx context.Context,
+	cmd *cobra.Command,
+	ragService *service.RAGService,
+	fixture *bilingualEvalFixture,
+) bool {
+	enHits, err := ragService.Search(ctx, fixture.EnglishQuery, bilingualEvalTopN)
+	if err != nil {
+		cmd.Printf("FAIL %s: English search failed: %s\n", fixture.Label, err.Error())
+		return false
+	}
+	frHits, err := ragService.Search(ctx, fixture.FrenchQuery, bilingualEvalTopN)
+	if err != nil {
+		cmd.Printf("FAIL %s: French search failed: %s\n", fixture.Label, err.Error())
+		return false
+	}
+
+	var missing []int
+	for _, page := range fixture.ExpectedPages {
+		if !pageFoundViaFullText(enHits, page) {
+			missing = append(missing, page)
+		}
+		if !pageFoundViaFullText(frHits, page) {
+			missing = append(missing, page)
+		}
+	}
+
+	if len(missing) == 0 {
+		cmd.Printf("PASS %s\n", fixture.Label)
+		return true
+	}
+
+	cmd.Printf(
+		"FAIL %s: expected pages %v via full-text match in both languages' top %d, missing/vector-only: %v\n",
+		fixture.Label,
+		fixture.ExpectedPages,
+		bilingualEvalTopN,
+		missing,
+	)
+	return false
 }
 
 // pageFoundViaFullText reports whether hits contains a chunk hit for page
@@ -132,7 +147,8 @@ func runEvalRetrievalBilingual(cmd *cobra.Command, args []string) {
 // whole point of this eval is confirming the full-text index itself now
 // matches cross-lingually, not just that embeddings are similar enough.
 func pageFoundViaFullText(hits []service.RAGResult, page int) bool {
-	for _, h := range hits {
+	for i := range hits {
+		h := &hits[i]
 		if h.Source == "chunk" && h.Page == page && slices.Contains(h.Methods, "fts") {
 			return true
 		}

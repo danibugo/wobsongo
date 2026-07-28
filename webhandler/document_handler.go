@@ -45,7 +45,10 @@ type DocumentWebHandler struct {
 }
 
 // NewDocumentWebHandler constructs a DocumentWebHandler.
-func NewDocumentWebHandler(svc *service.DocumentService, rawStore data.RawObjectStore) *DocumentWebHandler {
+func NewDocumentWebHandler(
+	svc *service.DocumentService,
+	rawStore data.RawObjectStore,
+) *DocumentWebHandler {
 	return &DocumentWebHandler{svc: svc, rawStore: rawStore}
 }
 
@@ -64,7 +67,7 @@ func (h *DocumentWebHandler) listPage(c echo.Context) error {
 		return err
 	}
 
-	layoutData := buildAppLayout(c, "Documents", "")
+	layoutData := buildAppLayout(c, "Documents")
 	return docview.List(docview.ListPageData{
 		AppLayoutData: layoutData,
 		Results:       *results,
@@ -73,7 +76,7 @@ func (h *DocumentWebHandler) listPage(c echo.Context) error {
 
 // newPage renders the create/upload form.
 func (h *DocumentWebHandler) newPage(c echo.Context) error {
-	layoutData := buildAppLayout(c, "New Document", "")
+	layoutData := buildAppLayout(c, "New Document")
 	return docview.Form(docview.FormPageData{
 		AppLayoutData: layoutData,
 	}).Render(c.Request().Context(), c.Response())
@@ -84,7 +87,7 @@ func (h *DocumentWebHandler) createPost(c echo.Context) error {
 	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, maxUploadBytes)
 
 	renderErr := func(msg string) error {
-		layoutData := buildAppLayout(c, "New Document", "")
+		layoutData := buildAppLayout(c, "New Document")
 		return docview.Form(docview.FormPageData{
 			AppLayoutData: layoutData,
 			Error:         msg,
@@ -167,7 +170,7 @@ func (h *DocumentWebHandler) editPage(c echo.Context) error {
 		return err
 	}
 
-	layoutData := buildAppLayout(c, "Edit Document", "")
+	layoutData := buildAppLayout(c, "Edit Document")
 	return docview.Form(docview.FormPageData{
 		AppLayoutData: layoutData,
 		Document:      doc,
@@ -181,8 +184,8 @@ func (h *DocumentWebHandler) updatePost(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "Document not found.")
 	}
 
-	renderErr := func(doc interface{}, msg string) error {
-		layoutData := buildAppLayout(c, "Edit Document", "")
+	renderErr := func(_ any, msg string) error {
+		layoutData := buildAppLayout(c, "Edit Document")
 		// Re-fetch document for form pre-fill.
 		existing, fetchErr := h.svc.GetByID(c.Request().Context(), id)
 		if fetchErr != nil {

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/kairosedubf/wobsongo/data"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/kairosedubf/wobsongo/data"
 )
 
 // pgUniqueViolation is the Postgres error code for unique_violation.

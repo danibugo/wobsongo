@@ -17,6 +17,7 @@ type WebRepos struct {
 	RawStore      data.RawObjectStore
 	ChunkRepo     data.DocumentChunkRepoer
 	KnowledgeRepo data.AtomicKnowledgeRepoer
+	MediaProvider data.MediaUploadProvider
 }
 
 // RegisterWebRoutes mounts all HTML routes onto the given Echo group.
@@ -55,7 +56,8 @@ func RegisterWebRoutes(
 	protected.POST("/documents/:id/delete", docHandler.deletePost)
 
 	chunkSvc := service.NewDocumentChunkService(repos.ChunkRepo)
-	chunkHandler := NewDocumentChunkWebHandler(chunkSvc, documentSvc)
+	mediaSvc := service.NewMediaService(repos.MediaProvider)
+	chunkHandler := NewDocumentChunkWebHandler(chunkSvc, documentSvc, mediaSvc)
 	protected.GET("/chunks", chunkHandler.listPage)
 
 	knowledgeSvc := service.NewAtomicKnowledgeService(repos.KnowledgeRepo)

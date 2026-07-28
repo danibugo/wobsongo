@@ -10,12 +10,11 @@ import (
 // Echo's CSRF middleware stores the per-request token under.
 const csrfContextKey = "csrf"
 
-func buildAppLayout(c echo.Context, title, subtitle string) layout.AppLayoutData {
+func buildAppLayout(c echo.Context, title string) layout.AppLayoutData {
 	claims := handler.ClaimsFromContext(c)
 	d := layout.AppLayoutData{
 		CurrentPath: c.Request().URL.Path,
 		PageTitle:   title,
-		Subtitle:    subtitle,
 		CSRFToken:   csrfToken(c),
 	}
 	if claims != nil {

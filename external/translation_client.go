@@ -23,6 +23,9 @@ const translationMaxTokens = 8000
 // per-item budget TranslateChunksWorker allots.
 const translationHTTPTimeout = 7 * time.Minute
 
+// translationChatRoleUser is the chat-completion message role for the caller's input.
+const translationChatRoleUser = "user"
+
 // TranslationClient implements data.Translator against a generic
 // OpenAI-compatible text chat-completions API — works unmodified against
 // self-hosted vLLM/Ollama or any hosted provider using that shape.
@@ -58,7 +61,7 @@ func (c *TranslationClient) Translate(
 	payload := extractionCompletionRequest{
 		Model: c.model,
 		Messages: []extractionChatMessage{
-			{Role: "user", Content: buildTranslationPrompt(text, sourceLanguage)},
+			{Role: translationChatRoleUser, Content: buildTranslationPrompt(text, sourceLanguage)},
 		},
 		MaxTokens: translationMaxTokens,
 	}

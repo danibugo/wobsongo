@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kairosedubf/wobsongo/external"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/spf13/cobra"
 )

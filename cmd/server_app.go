@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/core"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/repo"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/riverqueue/river"
 )
@@ -34,7 +34,7 @@ func buildApp(
 	riverClient *river.Client[pgx.Tx],
 	mediaProvider data.MediaUploadProvider,
 	rawStore data.RawObjectStore,
-	claimCheck buildAppClaimCheckDeps,
+	claimCheck buildAppClaimCheckDeps, //nolint:gocritic // negligible perf impact at this call frequency; not worth the pointer-indirection tradeoff
 ) *core.App {
 	queries := db.New(pool)
 

@@ -3,10 +3,10 @@ package cmd
 import (
 	"os"
 
-	"github.com/kairosedubf/wobsongo/external"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/dto"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/repo"
 	"github.com/kairosedubf/wobsongo/service"
 	"github.com/spf13/cobra"
@@ -72,7 +72,7 @@ func runClaimCheck(cmd *cobra.Command, args []string) {
 	result, err := claimService.CheckClaim(ctx, &dto.CheckClaimDTO{Text: claim})
 	if err != nil {
 		cmd.PrintErrf("Claim check failed: %s\n", err.Error())
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic // process exit; same accepted pattern as cmd/server.go
 		return
 	}
 

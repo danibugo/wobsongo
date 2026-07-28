@@ -9,20 +9,27 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// pdfContentType is the MIME type documents are stored under when uploaded as
+// a PDF (see allowedDocumentExtensions/mime.TypeByExtension in
+// document_handler.go) — the PDF viewer pane only makes sense for these.
+const pdfContentType = "application/pdf"
+
 // DocumentChunkWebHandler handles the read-only web (HTML) list page for
 // document chunks, always scoped to a single document selected via a
 // document_id query param.
 type DocumentChunkWebHandler struct {
 	svc         *service.DocumentChunkService
 	documentSvc *service.DocumentService
+	mediaSvc    *service.MediaService
 }
 
 // NewDocumentChunkWebHandler constructs a DocumentChunkWebHandler.
 func NewDocumentChunkWebHandler(
 	svc *service.DocumentChunkService,
 	documentSvc *service.DocumentService,
+	mediaSvc *service.MediaService,
 ) *DocumentChunkWebHandler {
-	return &DocumentChunkWebHandler{svc: svc, documentSvc: documentSvc}
+	return &DocumentChunkWebHandler{svc: svc, documentSvc: documentSvc, mediaSvc: mediaSvc}
 }
 
 // listPage renders the paginated chunk list for the document selected via the
@@ -50,6 +57,7 @@ func (h *DocumentChunkWebHandler) listPage(c echo.Context) error {
 
 	documentIDParam := c.QueryParam("document_id")
 	var results dto.PaginationResults[model.DocumentChunk]
+	var pdfURL string
 	hasSelection := false
 	if documentIDParam != "" {
 		if docID, parseErr := uuid.Parse(documentIDParam); parseErr == nil {
@@ -59,15 +67,28 @@ func (h *DocumentChunkWebHandler) listPage(c echo.Context) error {
 				return listErr
 			}
 			results = *r
+
+			for i := range docs.Items {
+				doc := &docs.Items[i]
+				if doc.ID == docID && doc.Filetype == pdfContentType {
+					url, presignErr := h.mediaSvc.GetPresignedGETURL(ctx, string(doc.FileURL), 0)
+					if presignErr != nil {
+						return presignErr
+					}
+					pdfURL = url
+					break
+				}
+			}
 		}
 	}
 
-	layoutData := buildAppLayout(c, "Chunks", "")
+	layoutData := buildAppLayout(c, "Chunks")
 	return chunkview.List(chunkview.ListPageData{
 		AppLayoutData:      layoutData,
 		Results:            results,
 		Documents:          docs.Items,
 		SelectedDocumentID: documentIDParam,
 		HasSelection:       hasSelection,
+		PDFURL:             pdfURL,
 	}).Render(ctx, c.Response())
 }

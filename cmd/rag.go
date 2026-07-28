@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -58,7 +57,7 @@ func runRAG(cmd *cobra.Command, args []string) {
 	results, err := ragService.Search(ctx, query, ragDefaultLimit)
 	if err != nil {
 		cmd.PrintErrf("Search failed: %s\n", err.Error())
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic // process exit; same accepted pattern as cmd/server.go
 		return
 	}
 
@@ -67,7 +66,8 @@ func runRAG(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	for i, r := range results {
+	for i := range results {
+		r := &results[i]
 		cmd.Printf(
 			"%d. [%s] score=%.4f methods=%s doc=%s lang=%s\n",
 			i+1, r.Source, r.RRFScore, strings.Join(r.Methods, ","), r.DocumentID, r.Language,
@@ -88,5 +88,5 @@ func truncateForDisplay(s string, n int) string {
 	if len(runes) <= n {
 		return s
 	}
-	return fmt.Sprintf("%s...", string(runes[:n]))
+	return string(runes[:n]) + "..."
 }

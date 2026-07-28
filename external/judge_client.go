@@ -22,6 +22,9 @@ const judgeMaxTokens = 1500
 // judgeHTTPTimeout bounds a single judge call.
 const judgeHTTPTimeout = 3 * time.Minute
 
+// judgeChatRoleUser is the chat-completion message role for the caller's input.
+const judgeChatRoleUser = "user"
+
 // JudgeClient implements data.ClaimJudge against a generic OpenAI-compatible
 // text chat-completions API — same shape as ExtractionClient.
 type JudgeClient struct {
@@ -64,7 +67,7 @@ func (c *JudgeClient) Judge(
 	payload := extractionCompletionRequest{
 		Model: c.model,
 		Messages: []extractionChatMessage{
-			{Role: "user", Content: buildJudgePrompt(req)},
+			{Role: judgeChatRoleUser, Content: buildJudgePrompt(req)},
 		},
 		MaxTokens: judgeMaxTokens,
 	}

@@ -139,6 +139,8 @@ func (r *DocumentChunkRepo) ListChunksNeedingTranslation(
 
 // PaginateByDocumentID retrieves a paginated page of chunks for a single
 // document, ordered by SequenceNumber.
+//
+//nolint:dupl // intentional structural mirror of AtomicKnowledgeRepo.PaginateByDocumentID for a distinct domain type
 func (r *DocumentChunkRepo) PaginateByDocumentID(
 	ctx context.Context,
 	documentID uuid.UUID,
