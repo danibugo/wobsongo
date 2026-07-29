@@ -18,6 +18,9 @@ type WebRepos struct {
 	ChunkRepo     data.DocumentChunkRepoer
 	KnowledgeRepo data.AtomicKnowledgeRepoer
 	MediaProvider data.MediaUploadProvider
+	Embedder      data.Embedder
+	ClaimAnalyzer data.ClaimAnalyzer
+	ClaimJudge    data.ClaimJudge
 }
 
 // RegisterWebRoutes mounts all HTML routes onto the given Echo group.
@@ -63,4 +66,13 @@ func RegisterWebRoutes(
 	knowledgeSvc := service.NewAtomicKnowledgeService(repos.KnowledgeRepo)
 	knowledgeHandler := NewAtomicKnowledgeWebHandler(knowledgeSvc, documentSvc)
 	protected.GET("/knowledge", knowledgeHandler.listPage)
+
+	ragSvc := service.NewRAGService(repos.ChunkRepo, repos.KnowledgeRepo, repos.Embedder)
+	retrievalHandler := NewRetrievalWebHandler(ragSvc, documentSvc, mediaSvc)
+	protected.GET("/retrieval", retrievalHandler.listPage)
+
+	claimSvc := service.NewClaimService(repos.ClaimAnalyzer, repos.ClaimJudge, ragSvc)
+	checkHandler := NewCheckWebHandler(claimSvc)
+	protected.GET("/check", checkHandler.formPage)
+	protected.POST("/check", checkHandler.checkPost)
 }

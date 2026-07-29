@@ -42,6 +42,14 @@ type RAGResult struct {
 	Page int
 	// TruthTier is set for fact hits only; empty for chunk hits.
 	TruthTier string
+	// BoundingBox, LayoutType, and SequenceNumber come from the source
+	// chunk — the hit's own chunk for chunk-source results, or the hydrated
+	// parent chunk for fact-source results (see hydrateFactChunks). Lets a
+	// caller (e.g. the Retrieval web page) reuse the same PDF-bbox-viewer
+	// row wiring as the /chunks page for every result, regardless of source.
+	BoundingBox    model.BoundingBox
+	LayoutType     model.LayoutType
+	SequenceNumber int
 	// Language is the source chunk's/fact's own language — useful for
 	// debugging cross-lingual retrieval, since a hit's language doesn't have
 	// to match the query's.
@@ -171,6 +179,10 @@ func (s *RAGService) hydrateFactChunks(ctx context.Context, results []RAGResult)
 			return fmt.Errorf("failed to fetch parent chunk %s: %w", results[i].chunkID, err)
 		}
 		results[i].ChunkText = chunk.Text
+		results[i].Page = chunk.Page
+		results[i].BoundingBox = chunk.BoundingBox
+		results[i].LayoutType = chunk.LayoutType
+		results[i].SequenceNumber = chunk.SequenceNumber
 	}
 	return nil
 }
@@ -182,13 +194,16 @@ func mapChunkResults(
 	out := make([]RAGResult, len(results))
 	for i, r := range results {
 		out[i] = RAGResult{
-			Key:        "chunk:" + r.Item.ID.String(),
-			Source:     "chunk",
-			Methods:    []string{method},
-			DocumentID: r.Item.DocumentID,
-			Text:       r.Item.Text,
-			Page:       r.Item.Page,
-			Language:   r.Item.Language,
+			Key:            "chunk:" + r.Item.ID.String(),
+			Source:         "chunk",
+			Methods:        []string{method},
+			DocumentID:     r.Item.DocumentID,
+			Text:           r.Item.Text,
+			Page:           r.Item.Page,
+			Language:       r.Item.Language,
+			BoundingBox:    r.Item.BoundingBox,
+			LayoutType:     r.Item.LayoutType,
+			SequenceNumber: r.Item.SequenceNumber,
 		}
 	}
 	return out

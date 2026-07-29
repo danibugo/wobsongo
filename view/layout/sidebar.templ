@@ -79,6 +79,19 @@ templ Sidebar(data AppLayoutData) {
 					}
 				}
 			}
+			@sidebar.Group(sidebar.GroupProps{Class: "py-1"}) {
+				@sidebar.GroupLabel() {
+					Verification
+				}
+				@sidebar.Menu() {
+					@navItem("/retrieval", "Retrieval", strings.HasPrefix(data.CurrentPath, "/retrieval")) {
+						@lucide.Search(templ.Attributes{"class": "size-4 shrink-0"})
+					}
+					@navItem("/check", "Check", strings.HasPrefix(data.CurrentPath, "/check")) {
+						@lucide.ShieldCheck(templ.Attributes{"class": "size-4 shrink-0"})
+					}
+				}
+			}
 		}
 		@sidebar.Footer() {
 			@sidebar.Menu() {

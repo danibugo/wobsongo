@@ -194,6 +194,9 @@ func NewApp(e *echo.Echo, config *config.Config, optionFuncs ...AppOption) *App 
 			ChunkRepo:     app.chunkRepo,
 			KnowledgeRepo: app.knowledgeRepo,
 			MediaProvider: app.mediaProvider,
+			Embedder:      app.embedder,
+			ClaimAnalyzer: app.claimAnalyzer,
+			ClaimJudge:    app.claimJudge,
 		},
 		jwtAuth, config,
 	)
