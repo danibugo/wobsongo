@@ -63,6 +63,9 @@ func RegisterWebRoutes(
 	chunkHandler := NewDocumentChunkWebHandler(chunkSvc, documentSvc, mediaSvc)
 	protected.GET("/chunks", chunkHandler.listPage)
 
+	evidenceHandler := NewEvidenceWebHandler(chunkSvc, documentSvc, mediaSvc)
+	protected.GET("/evidence", evidenceHandler.viewPage)
+
 	knowledgeSvc := service.NewAtomicKnowledgeService(repos.KnowledgeRepo)
 	knowledgeHandler := NewAtomicKnowledgeWebHandler(knowledgeSvc, documentSvc)
 	protected.GET("/knowledge", knowledgeHandler.listPage)

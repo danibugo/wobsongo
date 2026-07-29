@@ -200,6 +200,12 @@ func TestRAGService_Search_FusesAcrossAllFiveMethods(t *testing.T) {
 			results[0],
 		)
 	}
+	if results[0].ChunkID != chunkID {
+		t.Errorf(
+			"expected the fact hit's ChunkID to be its parent chunk's ID %s, got %s",
+			chunkID, results[0].ChunkID,
+		)
+	}
 	if results[1].Key != "chunk:"+chunkID.String() {
 		t.Errorf("expected the chunk ranked second, got %s", results[1].Key)
 	}
@@ -217,6 +223,12 @@ func TestRAGService_Search_FusesAcrossAllFiveMethods(t *testing.T) {
 		t.Errorf(
 			"expected a chunk-source hit's ChunkText to stay empty, got %q",
 			results[1].ChunkText,
+		)
+	}
+	if results[1].ChunkID != chunkID {
+		t.Errorf(
+			"expected a chunk-source hit's ChunkID to be its own ID %s, got %s",
+			chunkID, results[1].ChunkID,
 		)
 	}
 }

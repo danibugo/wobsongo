@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 
@@ -286,6 +287,123 @@ func TestClaimService_CheckClaim_MultipleSubClaimsJudgedConcurrentlyAndAggregate
 			"expected formatted message %q, got %q",
 			wantMessage, result.FormattedMessage,
 		)
+	}
+}
+
+func TestClaimService_CheckClaim_IsLongControlsFormattedMessageVerbosity(t *testing.T) {
+	evidenceChunkID := uuid.New()
+	chunkRepo := &mockrepo.DocumentChunkRepoerMock{}
+	chunkRepo.SearchByEmbeddingFunc = func(
+		context.Context, []float32, int,
+	) ([]data.ScoredResult[model.DocumentChunk], error) {
+		return nil, nil
+	}
+	chunkRepo.SearchByFullTextFunc = func(
+		context.Context, string, int,
+	) ([]data.ScoredResult[model.DocumentChunk], error) {
+		return []data.ScoredResult[model.DocumentChunk]{
+			{
+				Item: model.DocumentChunk{
+					ID:          evidenceChunkID,
+					ParsedChunk: model.ParsedChunk{Text: "supporting text"},
+				},
+				Score: 0.9,
+			},
+		}, nil
+	}
+
+	knowledgeRepo := &mockrepo.AtomicKnowledgeRepoerMock{}
+	knowledgeRepo.SearchByEmbeddingFunc = func(
+		context.Context, []float32, int,
+	) ([]data.ScoredResult[model.AtomicKnowledge], error) {
+		return nil, nil
+	}
+	knowledgeRepo.SearchByFullTextFunc = func(
+		context.Context, string, int,
+	) ([]data.ScoredResult[model.AtomicKnowledge], error) {
+		return nil, nil
+	}
+	knowledgeRepo.SearchBySimilarityFunc = func(
+		context.Context, string, int,
+	) ([]data.ScoredResult[model.AtomicKnowledge], error) {
+		return nil, nil
+	}
+
+	rag := NewRAGService(chunkRepo, knowledgeRepo, &stubEmbedder{vector: []float32{1}})
+	analyzer := &stubClaimAnalyzer{
+		analysis: &data.ClaimAnalysis{InScope: true, SubClaims: []string{"claim A"}},
+	}
+	judge := &stubClaimJudge{
+		judgeFunc: func(*data.JudgeRequest) (*data.JudgeVerdict, error) {
+			return &data.JudgeVerdict{
+				Verdict:        model.VerdictSupported,
+				Reasoning:      "the full multi-sentence reasoning",
+				BriefReasoning: "a short paraphrase",
+				CitedEvidence:  []int{0},
+			}, nil
+		},
+	}
+	s := NewClaimService(analyzer, judge, rag)
+
+	short, err := s.CheckClaim(t.Context(), &dto.CheckClaimDTO{Text: "claim A"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(short.FormattedMessage, "a short paraphrase") {
+		t.Errorf(
+			"expected short FormattedMessage to contain the brief reasoning, got %q",
+			short.FormattedMessage,
+		)
+	}
+	if strings.Contains(short.FormattedMessage, "the full multi-sentence reasoning") {
+		t.Errorf(
+			"expected short FormattedMessage to omit the full reasoning, got %q",
+			short.FormattedMessage,
+		)
+	}
+	if strings.Contains(short.FormattedMessage, "supporting text") {
+		t.Errorf(
+			"expected short FormattedMessage to omit citations, got %q",
+			short.FormattedMessage,
+		)
+	}
+
+	long, err := s.CheckClaim(t.Context(), &dto.CheckClaimDTO{Text: "claim A", IsLong: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(long.FormattedMessage, "the full multi-sentence reasoning") {
+		t.Errorf(
+			"expected long FormattedMessage to contain the full reasoning, got %q",
+			long.FormattedMessage,
+		)
+	}
+	if strings.Contains(long.FormattedMessage, "a short paraphrase") {
+		t.Errorf(
+			"expected long FormattedMessage to omit the brief reasoning, got %q",
+			long.FormattedMessage,
+		)
+	}
+	if !strings.Contains(long.FormattedMessage, "supporting text") {
+		t.Errorf(
+			"expected long FormattedMessage to include the cited evidence, got %q",
+			long.FormattedMessage,
+		)
+	}
+
+	// Structured data (SubClaims/Citations) is always fully populated
+	// regardless of IsLong — including in the short result, which only
+	// omits citations from FormattedMessage's text, not from the data.
+	for _, r := range []*ClaimCheckResult{short, long} {
+		if len(r.SubClaims) != 1 || len(r.SubClaims[0].Citations) != 1 {
+			t.Fatalf("expected 1 sub-claim with 1 citation, got %+v", r.SubClaims)
+		}
+		if r.SubClaims[0].Citations[0].ChunkID != evidenceChunkID {
+			t.Errorf(
+				"expected citation ChunkID %s, got %s",
+				evidenceChunkID, r.SubClaims[0].Citations[0].ChunkID,
+			)
+		}
 	}
 }
 

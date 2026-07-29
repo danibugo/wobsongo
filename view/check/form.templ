@@ -9,6 +9,7 @@ import (
 	"github.com/kairosedubf/wobsongo/components/card"
 	"github.com/kairosedubf/wobsongo/components/form"
 	"github.com/kairosedubf/wobsongo/components/label"
+	"github.com/kairosedubf/wobsongo/components/radio"
 	"github.com/kairosedubf/wobsongo/components/textarea"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/service"
@@ -19,7 +20,13 @@ import (
 type FormPageData struct {
 	layout.AppLayoutData
 	// Text is the submitted claim, re-shown on re-render (success or error).
-	Text   string
+	Text string
+	// IsLong mirrors dto.CheckClaimDTO.IsLong — selects which submitted
+	// "mode" radio was checked, re-shown on re-render like Text. Also
+	// decides how much of Result's already-fully-populated SubClaims to
+	// render: short shows BriefReasoning only, long shows Reasoning plus
+	// citations.
+	IsLong bool
 	Result *service.ClaimCheckResult
 	Error  string
 }
@@ -68,6 +75,21 @@ templ Form(data FormPageData) {
 						Placeholder: "Enter a claim to check against the knowledge base…",
 					})
 				}
+				@form.Item() {
+					@label.Label() {
+						Detail level
+					}
+					<div class="flex items-center gap-4 text-sm">
+						<label class="flex items-center gap-2">
+							@radio.Radio(radio.Props{Name: "mode", Value: "short", Checked: !data.IsLong})
+							Short
+						</label>
+						<label class="flex items-center gap-2">
+							@radio.Radio(radio.Props{Name: "mode", Value: "long", Checked: data.IsLong})
+							Long
+						</label>
+					</div>
+				}
 				@button.Button(button.Props{Type: button.TypeSubmit}) {
 					Check claim
 				}
@@ -100,21 +122,30 @@ templ Form(data FormPageData) {
 									</div>
 								}
 								@card.Content(card.ContentProps{Class: "pt-4"}) {
-									<p class="text-sm">{ sub.Reasoning }</p>
+									if data.IsLong {
+										<p class="text-sm">{ sub.Reasoning }</p>
+									} else {
+										<p class="text-sm">{ sub.BriefReasoning }</p>
+									}
 									if sub.RecommendMedicalConsult {
 										<p class="text-sm text-amber-700 dark:text-amber-400 mt-2">
 											Please consult a medical professional.
 										</p>
 									}
-									if len(sub.Citations) > 0 {
+									if data.IsLong && len(sub.Citations) > 0 {
 										<div class="mt-4 border-t pt-3">
 											<p class="text-xs font-medium text-muted-foreground mb-2">Citations</p>
 											<ul class="flex flex-col gap-2">
 												for _, cite := range sub.Citations {
 													<li class="text-xs text-muted-foreground">
-														<span class="font-medium text-foreground">
+														<a
+															href={ templ.SafeURL(fmt.Sprintf("/evidence?document_id=%s&chunk_id=%s", cite.DocumentID, cite.ChunkID)) }
+															target="_blank"
+															rel="noopener"
+															class="font-medium text-foreground hover:underline"
+														>
 															{ fmt.Sprintf("[%d] %s", cite.Index, cite.Source) }
-														</span>
+														</a>
 														if cite.Text != "" {
 															<span>{ " — " + cite.Text }</span>
 														}

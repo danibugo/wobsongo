@@ -34,12 +34,14 @@ func (h *CheckWebHandler) formPage(c echo.Context) error {
 func (h *CheckWebHandler) checkPost(c echo.Context) error {
 	ctx := c.Request().Context()
 	text := strings.TrimSpace(c.FormValue("text"))
+	isLong := c.FormValue("mode") == "long"
 
 	renderErr := func(msg string) error {
 		layoutData := buildAppLayout(c, "Check")
 		return checkview.Form(checkview.FormPageData{
 			AppLayoutData: layoutData,
 			Text:          text,
+			IsLong:        isLong,
 			Error:         msg,
 		}).Render(ctx, c.Response())
 	}
@@ -48,7 +50,7 @@ func (h *CheckWebHandler) checkPost(c echo.Context) error {
 		return renderErr("Please enter a claim to check.")
 	}
 
-	result, err := h.claimSvc.CheckClaim(ctx, &dto.CheckClaimDTO{Text: text})
+	result, err := h.claimSvc.CheckClaim(ctx, &dto.CheckClaimDTO{Text: text, IsLong: isLong})
 	if err != nil {
 		return renderErr("Failed to check claim: " + err.Error())
 	}
@@ -57,6 +59,7 @@ func (h *CheckWebHandler) checkPost(c echo.Context) error {
 	return checkview.Form(checkview.FormPageData{
 		AppLayoutData: layoutData,
 		Text:          text,
+		IsLong:        isLong,
 		Result:        result,
 	}).Render(ctx, c.Response())
 }

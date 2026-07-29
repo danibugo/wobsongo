@@ -25,6 +25,11 @@ type JudgeEvidence struct {
 	// tier at all (not merely an "unknown" one).
 	TruthTier  string
 	DocumentID uuid.UUID
+	// ChunkID is the chunk this evidence traces back to, mirroring
+	// service.RAGResult.ChunkID — pass-through data only, like DocumentID;
+	// neither is shown to the judge in buildJudgePrompt, both just ride
+	// along so citations built from CitedEvidence can reference them.
+	ChunkID uuid.UUID
 	// Language is the source chunk's/fact's own language, mirroring
 	// service.RAGResult.Language.
 	Language model.Language
@@ -52,6 +57,11 @@ type JudgeVerdict struct {
 	// a real doctor (Serious/Emergency) — never used to influence Verdict itself.
 	RecommendMedicalConsult bool
 	Reasoning               string
+	// BriefReasoning is a short, self-contained one-sentence paraphrase of
+	// Reasoning — unlike Reasoning, it must never use inline "[N]" citation
+	// markers, since it's meant to be shown on its own, without the evidence
+	// list alongside it (see service.formatClaimMessage's short mode).
+	BriefReasoning string
 	// CitedEvidence indexes into JudgeRequest.Evidence. Required for any
 	// Verdict other than InsufficientEvidence; a caller receiving an empty
 	// CitedEvidence alongside any other Verdict must force it to

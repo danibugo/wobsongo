@@ -29,6 +29,7 @@ func TestJudgeClient_Judge_Success(t *testing.T) {
 			"severity":                  "routine",
 			"recommend_medical_consult": false,
 			"reasoning":                 "the cited evidence backs the claim",
+			"brief_reasoning":           "vitamin C helps a bit",
 			"cited_evidence":            []int{0},
 		}))
 	}))
@@ -52,6 +53,9 @@ func TestJudgeClient_Judge_Success(t *testing.T) {
 	}
 	if len(verdict.CitedEvidence) != 1 || verdict.CitedEvidence[0] != 0 {
 		t.Errorf("expected CitedEvidence [0], got %v", verdict.CitedEvidence)
+	}
+	if verdict.BriefReasoning != "vitamin C helps a bit" {
+		t.Errorf("expected BriefReasoning %q, got %q", "vitamin C helps a bit", verdict.BriefReasoning)
 	}
 }
 

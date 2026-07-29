@@ -59,9 +59,12 @@ type RAGResult struct {
 	// claim judge) the surrounding context a bare SPO fact doesn't carry on
 	// its own. Empty for chunk-source hits, which already ARE the chunk.
 	ChunkText string
-	// chunkID is a fact hit's parent chunk ID, used internally by Search to
-	// populate ChunkText — not exposed beyond this package.
-	chunkID uuid.UUID
+	// ChunkID is the chunk this hit traces back to — the hit's own ID for
+	// chunk-source results, or the parent chunk's ID for fact-source results
+	// (see hydrateFactChunks). Lets a caller (e.g. a claim check's citations)
+	// link back to a specific chunk regardless of which source produced the
+	// hit.
+	ChunkID uuid.UUID
 }
 
 // RAGService performs hybrid search across document chunks and atomic-
@@ -174,9 +177,9 @@ func (s *RAGService) hydrateFactChunks(ctx context.Context, results []RAGResult)
 		if results[i].Source != "fact" {
 			continue
 		}
-		chunk, err := s.chunkRepo.GetByID(ctx, results[i].chunkID)
+		chunk, err := s.chunkRepo.GetByID(ctx, results[i].ChunkID)
 		if err != nil {
-			return fmt.Errorf("failed to fetch parent chunk %s: %w", results[i].chunkID, err)
+			return fmt.Errorf("failed to fetch parent chunk %s: %w", results[i].ChunkID, err)
 		}
 		results[i].ChunkText = chunk.Text
 		results[i].Page = chunk.Page
@@ -204,6 +207,7 @@ func mapChunkResults(
 			BoundingBox:    r.Item.BoundingBox,
 			LayoutType:     r.Item.LayoutType,
 			SequenceNumber: r.Item.SequenceNumber,
+			ChunkID:        r.Item.ID,
 		}
 	}
 	return out
@@ -223,7 +227,7 @@ func mapFactResults(
 			Text:       r.Item.SPOText(),
 			TruthTier:  r.Item.TruthTier.String(),
 			Language:   r.Item.Language,
-			chunkID:    r.Item.DocumentChunkID,
+			ChunkID:    r.Item.DocumentChunkID,
 		}
 	}
 	return out

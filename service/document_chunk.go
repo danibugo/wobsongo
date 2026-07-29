@@ -19,6 +19,14 @@ func NewDocumentChunkService(repo data.DocumentChunkRepoer) *DocumentChunkServic
 	return &DocumentChunkService{repo: repo}
 }
 
+// GetByID retrieves a single chunk by its ID.
+func (s *DocumentChunkService) GetByID(
+	ctx context.Context,
+	id uuid.UUID,
+) (*model.DocumentChunk, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
 // ListByPage retrieves a document's chunks on exactly one page, ordered by
 // SequenceNumber.
 func (s *DocumentChunkService) ListByPage(

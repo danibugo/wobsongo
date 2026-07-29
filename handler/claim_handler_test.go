@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/core"
 	"github.com/kairosedubf/wobsongo/data"
@@ -114,10 +115,11 @@ func TestCheckClaimHandler_Success(t *testing.T) {
 	}
 	judge := &stubJudge{
 		verdict: &data.JudgeVerdict{
-			Verdict:       model.VerdictSupported,
-			Severity:      model.SeverityRoutine,
-			Reasoning:     "the cited chunk backs this",
-			CitedEvidence: []int{0},
+			Verdict:        model.VerdictSupported,
+			Severity:       model.SeverityRoutine,
+			Reasoning:      "the cited chunk backs this",
+			BriefReasoning: "supported by the evidence",
+			CitedEvidence:  []int{0},
 		},
 	}
 
@@ -185,11 +187,117 @@ func TestCheckClaimHandler_Success(t *testing.T) {
 	if resp.Data.SubClaims[0].Verdict != "supported" {
 		t.Errorf("expected verdict %q, got %q", "supported", resp.Data.SubClaims[0].Verdict)
 	}
+	if resp.Data.SubClaims[0].BriefReasoning != "supported by the evidence" {
+		t.Errorf(
+			"expected brief_reasoning %q, got %q",
+			"supported by the evidence",
+			resp.Data.SubClaims[0].BriefReasoning,
+		)
+	}
+	// IsLong wasn't set on the request — default is short, so
+	// FormattedMessage uses BriefReasoning, not the full Reasoning, and
+	// carries no citations.
 	wantMessage := "✅ supported — 1 claim checked\n\n" +
 		"✅ 1. vitamin C prevents colds\n" +
-		"the cited chunk backs this"
+		"supported by the evidence"
 	if resp.Data.FormattedMessage != wantMessage {
 		t.Errorf("expected formatted message %q, got %q", wantMessage, resp.Data.FormattedMessage)
+	}
+}
+
+func TestCheckClaimHandler_Success_LongMode(t *testing.T) {
+	analyzer := &stubAnalyzer{
+		analysis: &data.ClaimAnalysis{
+			InScope:   true,
+			SubClaims: []string{"vitamin C prevents colds"},
+		},
+	}
+	judge := &stubJudge{
+		verdict: &data.JudgeVerdict{
+			Verdict:        model.VerdictSupported,
+			Severity:       model.SeverityRoutine,
+			Reasoning:      "the cited chunk backs this",
+			BriefReasoning: "supported by the evidence",
+			CitedEvidence:  []int{0},
+		},
+	}
+
+	evidenceChunkID := uuid.New()
+	chunkRepo := &mockrepo.DocumentChunkRepoerMock{}
+	chunkRepo.SearchByEmbeddingFunc = func(
+		context.Context, []float32, int,
+	) ([]data.ScoredResult[model.DocumentChunk], error) {
+		return nil, nil
+	}
+	chunkRepo.SearchByFullTextFunc = func(
+		context.Context, string, int,
+	) ([]data.ScoredResult[model.DocumentChunk], error) {
+		return []data.ScoredResult[model.DocumentChunk]{
+			{
+				Item: model.DocumentChunk{
+					ID:          evidenceChunkID,
+					ParsedChunk: model.ParsedChunk{Text: "relevant passage"},
+				},
+				Score: 0.9,
+			},
+		}, nil
+	}
+
+	knowledgeRepo := &mockrepo.AtomicKnowledgeRepoerMock{}
+	knowledgeRepo.SearchByEmbeddingFunc = func(
+		context.Context, []float32, int,
+	) ([]data.ScoredResult[model.AtomicKnowledge], error) {
+		return nil, nil
+	}
+	knowledgeRepo.SearchByFullTextFunc = func(
+		context.Context, string, int,
+	) ([]data.ScoredResult[model.AtomicKnowledge], error) {
+		return nil, nil
+	}
+	knowledgeRepo.SearchBySimilarityFunc = func(
+		context.Context, string, int,
+	) ([]data.ScoredResult[model.AtomicKnowledge], error) {
+		return nil, nil
+	}
+
+	app := newClaimTestApp(chunkRepo, knowledgeRepo, analyzer, judge)
+
+	body, err := json.Marshal(dto.CheckClaimDTO{Text: "vitamin C prevents colds", IsLong: true})
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, claimsCheckPath, bytes.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var resp testhelpers.APIResponse[dto.ClaimCheckResponse]
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to unmarshal response body: %v", err)
+	}
+
+	// IsLong was true — FormattedMessage uses the full Reasoning and appends
+	// the cited evidence, unlike the short-mode test above.
+	wantMessage := "✅ supported — 1 claim checked\n\n" +
+		"✅ 1. vitamin C prevents colds\n" +
+		"the cited chunk backs this\n" +
+		"  [0] (chunk) relevant passage"
+	if resp.Data.FormattedMessage != wantMessage {
+		t.Errorf("expected formatted message %q, got %q", wantMessage, resp.Data.FormattedMessage)
+	}
+
+	if len(resp.Data.SubClaims) != 1 || len(resp.Data.SubClaims[0].Citations) != 1 {
+		t.Fatalf("expected 1 sub-claim with 1 citation, got %+v", resp.Data.SubClaims)
+	}
+	if resp.Data.SubClaims[0].Citations[0].ChunkID != evidenceChunkID {
+		t.Errorf(
+			"expected citation chunk_id %s, got %s",
+			evidenceChunkID, resp.Data.SubClaims[0].Citations[0].ChunkID,
+		)
 	}
 }
 

@@ -29,6 +29,10 @@ type Citation struct {
 	ChunkText  string
 	TruthTier  string
 	DocumentID uuid.UUID
+	// ChunkID is the chunk this citation traces back to, mirroring
+	// RAGResult.ChunkID — lets a caller link directly to this evidence (e.g.
+	// the standalone /evidence PDF-bbox viewer).
+	ChunkID uuid.UUID
 	// Language is the source chunk's/fact's own language, mirroring
 	// RAGResult.Language.
 	Language model.Language
@@ -41,6 +45,11 @@ type SubClaimResult struct {
 	Severity                model.Severity
 	RecommendMedicalConsult bool
 	Reasoning               string
+	// BriefReasoning is a short, self-contained paraphrase of Reasoning,
+	// safe to show without the evidence list — see formatClaimMessage's
+	// short mode. Empty whenever Verdict is InsufficientEvidence (the
+	// zero-hits short-circuit in checkSubClaim never calls the judge).
+	BriefReasoning string
 	// Citations is the evidence the judge actually cited — empty whenever
 	// Verdict is InsufficientEvidence.
 	Citations []Citation
@@ -135,11 +144,16 @@ func (s *ClaimService) CheckClaim(
 
 	overallSummary := summarizeVerdicts(results, analysis.Language)
 	return &ClaimCheckResult{
-		InScope:          true,
-		OverallSummary:   overallSummary,
-		FormattedMessage: formatClaimMessage(results, overallSummary, analysis.Language),
-		SubClaims:        results,
-		Language:         analysis.Language,
+		InScope:        true,
+		OverallSummary: overallSummary,
+		FormattedMessage: formatClaimMessage(
+			results,
+			overallSummary,
+			analysis.Language,
+			req.IsLong,
+		),
+		SubClaims: results,
+		Language:  analysis.Language,
 	}, nil
 }
 
@@ -173,6 +187,7 @@ func (s *ClaimService) checkSubClaim(
 			ChunkText:  h.ChunkText,
 			TruthTier:  h.TruthTier,
 			DocumentID: h.DocumentID,
+			ChunkID:    h.ChunkID,
 			Language:   h.Language,
 		}
 	}
@@ -197,6 +212,7 @@ func (s *ClaimService) checkSubClaim(
 				ChunkText:  e.ChunkText,
 				TruthTier:  e.TruthTier,
 				DocumentID: e.DocumentID,
+				ChunkID:    e.ChunkID,
 				Language:   e.Language,
 			})
 		}
@@ -208,6 +224,7 @@ func (s *ClaimService) checkSubClaim(
 		Severity:                verdict.Severity,
 		RecommendMedicalConsult: verdict.RecommendMedicalConsult,
 		Reasoning:               verdict.Reasoning,
+		BriefReasoning:          verdict.BriefReasoning,
 		Citations:               citations,
 	}, nil
 }
@@ -311,10 +328,15 @@ var claimsCheckedLabelTemplates = map[model.Language]struct{ one, many string }{
 // adapted to this API's 5-value verdict taxonomy and bilingual support.
 // Plain text rather than HTML/Markdown, since this API is transport-agnostic
 // unlike a bot that sends directly to one chat platform.
+//
+// isLong selects between two shapes: false (short, the default) shows each
+// sub-claim's BriefReasoning only; true shows the full Reasoning plus, when
+// present, the evidence/citations it's actually based on.
 func formatClaimMessage(
 	results []SubClaimResult,
 	overallSummary string,
 	language model.Language,
+	isLong bool,
 ) string {
 	label := claimsCheckedLabelTemplates[language].many
 	if len(results) == 1 {
@@ -337,12 +359,37 @@ func formatClaimMessage(
 		b.WriteString(strconv.Itoa(i + 1))
 		b.WriteString(". ")
 		b.WriteString(r.Claim)
-		if r.Reasoning != "" {
-			b.WriteString("\n")
-			b.WriteString(r.Reasoning)
+
+		explainer := r.BriefReasoning
+		if isLong {
+			explainer = r.Reasoning
 		}
+		if explainer != "" {
+			b.WriteString("\n")
+			b.WriteString(explainer)
+		}
+
+		if isLong && len(r.Citations) > 0 {
+			b.WriteString("\n")
+			for _, c := range r.Citations {
+				fmt.Fprintf(&b, "  [%d] (%s) %s\n", c.Index, c.Source, truncateForMessage(c.Text))
+			}
+		}
+
 		b.WriteString("\n\n")
 	}
 
 	return strings.TrimSpace(b.String())
+}
+
+// truncateForMessage caps a citation's text at 200 runes for display in
+// FormattedMessage's long form — mirrors cmd/rag.go's truncateForDisplay
+// convention (there capped at 300, for a wider terminal listing).
+func truncateForMessage(text string) string {
+	const maxLen = 200
+	runes := []rune(text)
+	if len(runes) <= maxLen {
+		return text
+	}
+	return string(runes[:maxLen]) + "..."
 }
