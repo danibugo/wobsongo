@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kairosedubf/wobsongo/components/pagination"
-	"github.com/kairosedubf/wobsongo/components/table"
-	"github.com/kairosedubf/wobsongo/components/tooltip"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/view/layout"
+	"github.com/templui/templui/components/pagination"
+	"github.com/templui/templui/components/table"
+	"github.com/templui/templui/components/tooltip"
 )
 
 // ListPageData holds the data for the chunk list page.

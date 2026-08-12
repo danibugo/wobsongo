@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/kairosedubf/wobsongo/components/pagination"
-	"github.com/kairosedubf/wobsongo/components/table"
 	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/view/layout"
+	"github.com/templui/templui/components/pagination"
+	"github.com/templui/templui/components/table"
 )
 
 // ListPageData holds the data for the knowledge list page.

@@ -9,13 +9,13 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/kairosedubf/wobsongo/components/alert"
-	"github.com/kairosedubf/wobsongo/components/button"
-	"github.com/kairosedubf/wobsongo/components/card"
-	"github.com/kairosedubf/wobsongo/components/form"
-	"github.com/kairosedubf/wobsongo/components/input"
-	"github.com/kairosedubf/wobsongo/components/label"
 	"github.com/kairosedubf/wobsongo/view/layout"
+	"github.com/templui/templui/components/alert"
+	"github.com/templui/templui/components/button"
+	"github.com/templui/templui/components/card"
+	"github.com/templui/templui/components/form"
+	"github.com/templui/templui/components/input"
+	"github.com/templui/templui/components/label"
 )
 
 func Register(csrfToken, errMsg string) templ.Component {

@@ -14,7 +14,6 @@ tool (
 )
 
 require (
-	github.com/Oudwins/tailwind-merge-go v0.2.0
 	github.com/a-h/templ v0.3.1020
 	github.com/bryanvaz/go-templ-lucide-icons v0.480.0
 	github.com/go-playground/validator/v10 v10.30.3
@@ -58,6 +57,7 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Ladicle/tabwriter v1.0.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/Oudwins/tailwind-merge-go v0.2.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect

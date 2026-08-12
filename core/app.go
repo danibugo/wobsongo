@@ -14,6 +14,7 @@ import (
 	"github.com/kairosedubf/wobsongo/webhandler"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	templuiutils "github.com/templui/templui/utils"
 )
 
 const (
@@ -202,6 +203,10 @@ func NewApp(e *echo.Echo, config *config.Config, optionFuncs ...AppOption) *App 
 	)
 
 	e.StaticFS("/static", ui.StaticFS)
+
+	scriptMux := http.NewServeMux()
+	templuiutils.SetupScriptRoutes(scriptMux, !config.IsProduction())
+	e.Any("/templui/js/*", echo.WrapHandler(scriptMux))
 
 	return app
 }
