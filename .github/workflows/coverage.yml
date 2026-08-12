@@ -1,0 +1,32 @@
+name: coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.3"
+
+      - name: Start test database
+        run: make dbtestup
+
+      - name: Run tests with coverage
+        run: make test
+
+      - name: Stop test database
+        if: always()
+        run: make dbtestdown
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverdb.profile
+          fail_ci_if_error: true

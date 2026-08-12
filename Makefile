@@ -90,7 +90,7 @@ test:
 	go test \
 		-count=1 \
 		-coverprofile=coverdb.profile \
-		-coverpkg=./... \
+		-coverpkg=$$(go list ./... | grep -v -E '/view/|/components/' | paste -sd, -) \
 		-covermode count ./... && \
 		go tool cover -func coverdb.profile
 
