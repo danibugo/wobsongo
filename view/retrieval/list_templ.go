@@ -12,12 +12,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kairosedubf/wobsongo/components/badge"
-	"github.com/kairosedubf/wobsongo/components/button"
-	"github.com/kairosedubf/wobsongo/components/table"
-	"github.com/kairosedubf/wobsongo/components/tooltip"
 	"github.com/kairosedubf/wobsongo/service"
 	"github.com/kairosedubf/wobsongo/view/layout"
+	"github.com/templui/templui/components/badge"
+	"github.com/templui/templui/components/button"
+	"github.com/templui/templui/components/table"
+	"github.com/templui/templui/components/tooltip"
 )
 
 // Row pairs one hybrid-search hit with the display data the table and

@@ -9,10 +9,10 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/kairosedubf/wobsongo/components/avatar"
-	"github.com/kairosedubf/wobsongo/components/breadcrumb"
-	"github.com/kairosedubf/wobsongo/components/dropdown"
-	"github.com/kairosedubf/wobsongo/components/sidebar"
+	"github.com/templui/templui/components/avatar"
+	"github.com/templui/templui/components/breadcrumb"
+	"github.com/templui/templui/components/dropdown"
+	"github.com/templui/templui/components/sidebar"
 )
 
 func App(data AppLayoutData) templ.Component {

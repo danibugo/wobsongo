@@ -1,12 +1,25 @@
 version: "3"
 
 tasks:
+  gen-css-sources:
+    desc: Regenerate @source directives pointing Tailwind at templui's module-cache path (its .templ files live outside this repo)
+    cmds:
+      - |
+        TEMPLUI_PATH="$(go list -m -f '{{"{{"}}.Dir{{"}}"}}' github.com/templui/templui)" && \
+        printf '%s\n' \
+          '@source "../../**/*.templ";' \
+          '@source "../../**/*.go";' \
+          '@source "../../**/*.html";' \
+          '@source "../../**/*.js";' \
+          "@source \"$TEMPLUI_PATH/components/**/*.templ\";" \
+          > ./assets/css/sources.generated.css
+
   setup-static:
     desc: One-time setup — copy JS to ui/static/js and compile CSS (run before first go build)
     cmds:
       - mkdir -p ui/static/css ui/static/js
-      - cp assets/js/*.min.js ui/static/js/
       - cp assets/js/pdf-bbox-viewer.js ui/static/js/
+      - task: gen-css-sources
       - tailwindcss -i ./assets/css/input.css -o ./ui/static/css/output.css --minify
 
   templ:
@@ -17,6 +30,7 @@ tasks:
   tailwind:
     desc: Watch Tailwind CSS and recompile to ui/static/css/output.css
     cmds:
+      - task: gen-css-sources
       - tailwindcss -i ./assets/css/input.css -o ./ui/static/css/output.css --watch
 
   dev:
@@ -32,6 +46,7 @@ tasks:
   build:
     desc: Production build — compile CSS, generate templ, then build the binary with embedded assets
     cmds:
+      - task: gen-css-sources
       - tailwindcss -i ./assets/css/input.css -o ./ui/static/css/output.css --minify
       - go tool templ generate
       - CGO_ENABLED=0 go build -o ./tmp/wscore .

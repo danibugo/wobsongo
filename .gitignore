@@ -7,6 +7,9 @@
 tmp/
 dist/
 
+# Generated at build time — path is machine-local (GOMODCACHE)
+assets/css/sources.generated.css
+
 # IDE
 .idea/
 .vscode/
