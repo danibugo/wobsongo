@@ -13,7 +13,7 @@
     "tailwindcss_4@4.3.2"
   ],
   "shell": {
-    "init_hook": ["echo '🚀 Initializing environment...'"],
+    "init_hook": ["unset DEVELOPER_DIR"],
     "scripts": {
       "check": "make fmt check",
       "install-docs": "uv pip install 'mkdocs==1.6.1' 'mkdocs-material==9.7.0'  && npm install -g log4brains --prefix .devbox/node_modules",
