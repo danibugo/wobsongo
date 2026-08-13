@@ -45,6 +45,31 @@ func TestParseVerdict_CaseInsensitiveAndTrimmed(t *testing.T) {
 	}
 }
 
+func TestVerdict_StringOutOfRange(t *testing.T) {
+	if got := Verdict(999).String(); got != "insufficient_evidence" {
+		t.Errorf("String() for out-of-range value = %q, want %q", got, "insufficient_evidence")
+	}
+}
+
+func TestVerdict_Emoji(t *testing.T) {
+	tests := []struct {
+		verdict Verdict
+		want    string
+	}{
+		{VerdictSupported, "✅"},
+		{VerdictContradicted, "❌"},
+		{VerdictPartiallySupported, "⚠️"},
+		{VerdictMixed, "🔶"},
+		{VerdictInsufficientEvidence, "❓"},
+		{Verdict(999), "❓"},
+	}
+	for _, tt := range tests {
+		if got := tt.verdict.Emoji(); got != tt.want {
+			t.Errorf("%v.Emoji() = %q, want %q", tt.verdict, got, tt.want)
+		}
+	}
+}
+
 func TestSeverity_StringAndParseRoundTrip(t *testing.T) {
 	severities := []Severity{SeverityRoutine, SeveritySerious, SeverityEmergency}
 	for _, s := range severities {
@@ -61,5 +86,11 @@ func TestSeverity_StringAndParseRoundTrip(t *testing.T) {
 func TestParseSeverity_Unrecognized(t *testing.T) {
 	if _, err := ParseSeverity("not-a-real-severity"); err == nil {
 		t.Error("expected an error for an unrecognized severity")
+	}
+}
+
+func TestSeverity_StringOutOfRange(t *testing.T) {
+	if got := Severity(999).String(); got != "routine" {
+		t.Errorf("String() for out-of-range value = %q, want %q", got, "routine")
 	}
 }
