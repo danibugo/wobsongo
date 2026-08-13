@@ -198,7 +198,7 @@ templ List(data ListPageData) {
 						}
 						{{ pages := pagination.CreatePagination(data.CurrentPage, data.TotalPages, 7) }}
 						if pages.TotalPages > 1 {
-							<div class="mt-6 flex justify-start">
+							<div class="mt-6 sticky bottom-0 z-10 flex items-center justify-between gap-4 border-t bg-background px-2 py-3">
 								@pagination.Pagination() {
 									@pagination.Content() {
 										@pagination.Item() {
@@ -225,6 +225,22 @@ templ List(data ListPageData) {
 										}
 									}
 								}
+								<form method="GET" action="/chunks" class="flex items-center gap-2 shrink-0">
+									<input type="hidden" name="document_id" value={ data.SelectedDocumentID }/>
+									<label for="jump-to-page" class="text-sm text-muted-foreground">Jump to page</label>
+									<select
+										id="jump-to-page"
+										name="page"
+										class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+										onchange="this.form.submit()"
+									>
+										for p := 1; p <= data.TotalPages; p++ {
+											<option value={ fmt.Sprintf("%d", p) } selected?={ p == pages.CurrentPage }>
+												{ fmt.Sprintf("%d", p) }
+											</option>
+										}
+									</select>
+								</form>
 							</div>
 						}
 					}
