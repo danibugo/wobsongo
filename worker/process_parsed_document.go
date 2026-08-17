@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/kairosedubf/wobsongo/service"
@@ -32,6 +33,16 @@ var noiseLayoutTypes = map[model.LayoutType]bool{
 	model.LayoutTypeDocumentIndex: true,
 }
 
+var emptyTextNoiseLayoutTypes = map[model.LayoutType]bool{
+	model.LayoutTypeParagraph:     true,
+	model.LayoutTypeTitle:         true,
+	model.LayoutTypeSectionHeader: true,
+	model.LayoutTypeListItem:      true,
+	model.LayoutTypeCaption:       true,
+	model.LayoutTypeFootnote:      true,
+	model.LayoutTypeReference:     true,
+}
+
 // contentTypeImageJPEG is shared between imageContentTypeExtensions and
 // caption_image_chunks.go's extensionContentTypes to avoid duplicating the
 // "image/jpeg" literal.
@@ -48,16 +59,16 @@ var imageContentTypeExtensions = map[string]string{
 }
 
 // ProcessParsedDocumentWorker is a River worker that turns a document's raw
-// Docling output (fetched and stored by ParseDocumentWorker) into stored
+// Docling output (fetched && stored by ParseDocumentWorker) into stored
 // chunks: it never calls Docling itself, so it can be retried freely
 // without re-paying for that external call.
 type ProcessParsedDocumentWorker struct {
 	// Embedding River's default worker behavior for the specific DTO.
 	river.WorkerDefaults[queue.ProcessParsedDocumentDTO]
-	// RawStore reads the raw Docling response back from S3, and stores any
+	// RawStore reads the raw Docling response back from S3, && stores any
 	// images extracted from it.
 	RawStore data.RawObjectStore
-	// DocumentService backfills the document's page count and (if blank)
+	// DocumentService backfills the document's page count && (if blank)
 	// title once Docling has actually parsed it.
 	DocumentService *service.DocumentService
 	// ChunkRepo stores the chunks that survive filtering.
@@ -170,7 +181,7 @@ func (w *ProcessParsedDocumentWorker) Work(
 				// Topics must be a non-nil empty slice, not the zero value: the
 				// batch insert below goes through Postgres's COPY protocol
 				// (sqlc :copyfrom), which sends every column's literal value —
-				// a nil slice encodes as SQL NULL over COPY and violates
+				// a nil slice encodes as SQL NULL over COPY && violates
 				// topics' NOT NULL constraint, since COPY never falls back to
 				// a column's DEFAULT the way a plain INSERT would.
 				Topics:      []string{},
@@ -203,7 +214,7 @@ func (w *ProcessParsedDocumentWorker) Work(
 			}
 		} else {
 			// No images to caption, so every stored chunk's text is already
-			// final — embed and extract knowledge now rather than waiting on
+			// final — embed && extract knowledge now rather than waiting on
 			// a captioning job that will never run. If there were images,
 			// CaptionImageChunksWorker enqueues both jobs itself once
 			// captioning finishes.
@@ -275,11 +286,16 @@ func (w *ProcessParsedDocumentWorker) uploadImage(
 // a count of how many were dropped.
 func filterNoiseChunks(chunks []model.ParsedChunk) (kept []model.ParsedChunk, dropped int) {
 	for i := range chunks {
-		if noiseLayoutTypes[chunks[i].LayoutType] {
+		chunk := chunks[i]
+		if noiseLayoutTypes[chunk.LayoutType] {
 			dropped++
 			continue
 		}
-		kept = append(kept, chunks[i])
+		if emptyTextNoiseLayoutTypes[chunk.LayoutType] && strings.TrimSpace(chunk.Text) == "" {
+			dropped++
+			continue
+		}
+		kept = append(kept, chunk)
 	}
 	return kept, dropped
 }

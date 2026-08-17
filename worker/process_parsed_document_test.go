@@ -31,11 +31,11 @@ func readCloserFromString(s string) io.ReadCloser {
 
 func TestFilterNoiseChunks(t *testing.T) {
 	chunks := []model.ParsedChunk{
-		{LayoutType: model.LayoutTypeParagraph},
+		{Text: "paragraph", LayoutType: model.LayoutTypeParagraph},
 		{LayoutType: model.LayoutTypePageHeader},
-		{LayoutType: model.LayoutTypeTitle},
+		{Text: "title", LayoutType: model.LayoutTypeTitle},
 		{LayoutType: model.LayoutTypePageFooter},
-		{LayoutType: model.LayoutTypeTable},
+		{Text: "table", LayoutType: model.LayoutTypeTable},
 		{LayoutType: model.LayoutTypeDocumentIndex},
 	}
 
@@ -51,6 +51,27 @@ func TestFilterNoiseChunks(t *testing.T) {
 		if noiseLayoutTypes[c.LayoutType] {
 			t.Errorf("kept a noise chunk: %s", c.LayoutType)
 		}
+	}
+}
+
+func TestFilterNoiseChunks_DropsEmptyTextChunks(t *testing.T) {
+	chunks := []model.ParsedChunk{
+		{Text: "   ", LayoutType: model.LayoutTypeParagraph},
+		{Text: "Informazione importante", LayoutType: model.LayoutTypeParagraph},
+		{Text: "", LayoutType: model.LayoutTypeTable},
+	}
+	kept, dropped := filterNoiseChunks(chunks)
+	if dropped != 1 {
+		t.Fatalf("expected 1 dropped chunk, got %d", dropped)
+	}
+	if len(kept) != 2 {
+		t.Fatalf("expected 2 kept chunks, got %d", len(kept))
+	}
+	if kept[0].Text != "Informazione importante" {
+		t.Errorf("unexpected first kept chunk: %q", kept[0].Text)
+	}
+	if kept[1].LayoutType != model.LayoutTypeTable {
+		t.Errorf("expected empty table chunk to be preserved")
 	}
 }
 
