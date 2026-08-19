@@ -3,7 +3,7 @@
     "enable": ["gci", "gofmt", "gofumpt", "goimports", "golines"],
     "exclusions": {
       "generated": "lax",
-      "paths": ["third_party$", "builtin$", "examples$"]
+      "paths": ["third_party$", "builtin$", "examples$", "components/icon/icon_data.go"]
     },
     "settings": {
       "gofmt": {
@@ -62,7 +62,7 @@
     ],
     "exclusions": {
       "generated": "lax",
-      "paths": ["third_party$", "builtin$", "examples$"],
+      "paths": ["third_party$", "builtin$", "examples$", "components/icon/icon_data.go"],
       "presets": [
         "comments",
         "common-false-positives",

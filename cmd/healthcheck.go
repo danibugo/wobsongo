@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/kairosedubf/wobsongo/external"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/repo"
 	"github.com/spf13/cobra"
 )

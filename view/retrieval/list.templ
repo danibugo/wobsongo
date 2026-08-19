@@ -1,0 +1,235 @@
+package retrieval
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/kairosedubf/wobsongo/components/badge"
+	"github.com/kairosedubf/wobsongo/components/button"
+	"github.com/kairosedubf/wobsongo/components/table"
+	"github.com/kairosedubf/wobsongo/components/tooltip"
+	"github.com/kairosedubf/wobsongo/service"
+	"github.com/kairosedubf/wobsongo/view/layout"
+)
+
+// Row pairs one hybrid-search hit with the display data the table and
+// PDF-bbox viewer need but service.RAGResult itself doesn't carry (it only
+// knows the source DocumentID, not a human title or a presigned file URL).
+type Row struct {
+	service.RAGResult
+	DocumentTitle string
+	// PDFURL is a presigned GET URL for the hit's source document, only set
+	// when that document is a PDF.
+	PDFURL string
+}
+
+// ListPageData holds the data for the retrieval search page.
+type ListPageData struct {
+	layout.AppLayoutData
+	Query   string
+	Results []Row
+}
+
+// textPreview truncates result text to a short single-line preview.
+func textPreview(text string) string {
+	const maxLen = 80
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen] + "…"
+}
+
+// resultBBox formats a result's bounding box as a "left,top,right,bottom"
+// string for a data attribute — same format view/chunks uses for its
+// pdf-bbox-viewer wiring.
+func resultBBox(row Row) string {
+	b := row.BoundingBox
+	return fmt.Sprintf("%g,%g,%g,%g", b[0], b[1], b[2], b[3])
+}
+
+// sourceBadgeVariant distinguishes chunk hits from fact hits at a glance.
+func sourceBadgeVariant(source string) badge.Variant {
+	if source == "fact" {
+		return badge.VariantDefault
+	}
+	return badge.VariantSecondary
+}
+
+templ List(data ListPageData) {
+	{{ data.Breadcrumbs = []layout.Crumb{{Label: "Retrieval", Href: ""}} }}
+	@layout.App(data.AppLayoutData) {
+		<div class="mb-6">
+			<form method="GET" action="/retrieval" class="flex items-center gap-2">
+				<input
+					type="text"
+					name="q"
+					value={ data.Query }
+					placeholder="Search the knowledge base…"
+					class="flex h-9 w-full max-w-md rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				/>
+				@button.Button(button.Props{Type: button.TypeSubmit}) {
+					Search
+				}
+			</form>
+		</div>
+		if data.Query == "" {
+			<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+				<p class="text-sm">Enter a query to search the knowledge base.</p>
+			</div>
+		} else {
+			<div class="grid grid-cols-[minmax(0,1fr)_640px] gap-6 items-start">
+				<div class="min-w-0 overflow-x-auto">
+					if len(data.Results) == 0 {
+						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+							<p class="text-sm">{ fmt.Sprintf("No results for %q.", data.Query) }</p>
+						</div>
+					} else {
+						<p class="text-sm text-muted-foreground mb-3">
+							{ fmt.Sprintf("Showing top %d results", len(data.Results)) }
+						</p>
+						@tooltip.Script()
+						@table.Table() {
+							@table.Header() {
+								@table.Row() {
+									@table.Head() { Source }
+									@table.Head() { Document }
+									@table.Head() { Page }
+									@table.Head() { Language }
+									@table.Head() { Text }
+								}
+							}
+							@table.Body() {
+								for _, row := range data.Results {
+									@table.Row(table.RowProps{
+										Class: "result-row cursor-pointer",
+										Attributes: templ.Attributes{
+											"data-page":    fmt.Sprintf("%d", row.Page),
+											"data-bbox":    resultBBox(row),
+											"data-pdf-url": row.PDFURL,
+										},
+									}) {
+										@table.Cell() {
+											@tooltip.Tooltip() {
+												@tooltip.Trigger(tooltip.TriggerProps{}) {
+													@badge.Badge(badge.Props{Variant: sourceBadgeVariant(row.Source)}) {
+														{ row.Source }
+													}
+												}
+												@tooltip.Content(tooltip.ContentProps{
+													Position: tooltip.PositionTop,
+												}) {
+													{ fmt.Sprintf("score=%.4f methods=%s", row.RRFScore, strings.Join(row.Methods, ",")) }
+												}
+											}
+										}
+										@table.Cell(table.CellProps{Class: "max-w-[180px] truncate"}) {
+											{ row.DocumentTitle }
+										}
+										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+											if row.Source == "fact" {
+												{ row.TruthTier }
+											} else {
+												{ fmt.Sprintf("%d", row.Page) }
+											}
+										}
+										@table.Cell() {
+											{ row.Language.String() }
+										}
+										@table.Cell(table.CellProps{Class: "max-w-[220px]"}) {
+											@tooltip.Tooltip() {
+												@tooltip.Trigger(tooltip.TriggerProps{}) {
+													<span class="block truncate cursor-help">{ textPreview(row.Text) }</span>
+												}
+												@tooltip.Content(tooltip.ContentProps{
+													Position:      tooltip.PositionTop,
+													Class:         "max-w-sm whitespace-pre-wrap break-words text-left",
+													HoverDelay:    200,
+													HoverOutDelay: 100,
+												}) {
+													{ row.Text }
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+						<script type="module">
+							const viewer = document.getElementById('retrieval-pdf-viewer');
+							let pinnedRow = null;
+							let currentUrl = '';
+
+							function clearHighlight() {
+								if (!viewer) return;
+								viewer.setAttribute('lefts', '');
+								viewer.setAttribute('bottoms', '');
+								viewer.setAttribute('rights', '');
+								viewer.setAttribute('tops', '');
+							}
+
+							async function applyRow(row) {
+								if (!viewer) return;
+								const url = row.dataset.pdfUrl;
+								if (!url) {
+									clearHighlight();
+									return;
+								}
+								const { doclingBboxesToProps } = await import('/static/js/pdf-bbox-viewer.js');
+								if (url !== currentUrl) {
+									viewer.setAttribute('url', url);
+									currentUrl = url;
+								}
+								const page = row.dataset.page;
+								const bbox = (row.dataset.bbox || '').split(',').map(Number);
+								if (bbox.length !== 4 || bbox.some(Number.isNaN)) return;
+								const attrs = doclingBboxesToProps([bbox]);
+								viewer.setAttribute('page-number', page);
+								viewer.setAttribute('lefts', attrs.lefts);
+								viewer.setAttribute('bottoms', attrs.bottoms);
+								viewer.setAttribute('rights', attrs.rights);
+								viewer.setAttribute('tops', attrs.tops);
+							}
+
+							document.querySelectorAll('.result-row').forEach((row) => {
+								row.addEventListener('mouseenter', () => {
+									applyRow(row);
+									if (row !== pinnedRow) {
+										row.style.backgroundColor = 'var(--muted)';
+									}
+								});
+								row.addEventListener('mouseleave', () => {
+									if (row !== pinnedRow) {
+										row.style.backgroundColor = '';
+									}
+									if (pinnedRow) {
+										applyRow(pinnedRow);
+									} else {
+										clearHighlight();
+									}
+								});
+								row.addEventListener('click', () => {
+									if (pinnedRow) {
+										pinnedRow.style.backgroundColor = '';
+										pinnedRow.style.boxShadow = '';
+									}
+									pinnedRow = row;
+									row.style.backgroundColor = 'var(--muted)';
+									row.style.boxShadow = 'inset 3px 0 0 0 var(--primary)';
+									applyRow(row);
+								});
+							});
+						</script>
+					}
+				</div>
+				<div class="min-w-0 border-l pl-6 sticky top-6 self-start">
+					<script type="module" src="/static/js/pdf-bbox-viewer.js"></script>
+					<p class="text-xs text-muted-foreground mb-2">Hover or click a result to preview its source page.</p>
+					<div class="max-h-[85vh] overflow-auto rounded-md border">
+						<pdf-bbox-viewer id="retrieval-pdf-viewer" scale="1.1"></pdf-bbox-viewer>
+					</div>
+				</div>
+			</div>
+		}
+	}
+}

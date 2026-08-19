@@ -7,6 +7,14 @@ type CheckClaimDTO struct {
 	// Text is the claim or message to check — may be a direct question, a
 	// casual claim, or a sentence pulled from a video transcript.
 	Text string `json:"text" validate:"required"`
+
+	// IsLong controls FormattedMessage's verbosity: false (the default —
+	// note the zero-value already means short, no need to set this at all
+	// for the common case) shows a brief paraphrased explainer per
+	// sub-claim; true shows the full reasoning plus its evidence/citations.
+	// Only affects FormattedMessage — SubClaims/Citations are always fully
+	// populated in the structured response either way.
+	IsLong bool `json:"is_long,omitempty"`
 }
 
 // ClaimCheckResponse represents the outcome of checking a claim.
@@ -53,6 +61,10 @@ type SubClaimResponse struct {
 	// Reasoning is the judge's explanation for the verdict.
 	Reasoning string `json:"reasoning"`
 
+	// BriefReasoning is a short, self-contained paraphrase of Reasoning,
+	// safe to display without the citations list alongside it.
+	BriefReasoning string `json:"brief_reasoning"`
+
 	// Citations are the specific pieces of knowledge-base evidence the
 	// verdict is based on. Empty whenever Verdict is insufficient_evidence.
 	Citations []CitationResponse `json:"citations"`
@@ -69,6 +81,11 @@ type CitationResponse struct {
 
 	// DocumentID is the source document this evidence came from.
 	DocumentID uuid.UUID `json:"document_id"`
+
+	// ChunkID is the chunk this evidence traces back to — combine with
+	// DocumentID to link directly to this evidence (e.g. the standalone
+	// /evidence PDF viewer: /evidence?document_id=...&chunk_id=...).
+	ChunkID uuid.UUID `json:"chunk_id"`
 
 	// Text is the matched text — a chunk's text, or a fact's subject-predicate-object.
 	Text string `json:"text"`

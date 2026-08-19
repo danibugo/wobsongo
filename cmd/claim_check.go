@@ -3,14 +3,16 @@ package cmd
 import (
 	"os"
 
-	"github.com/kairosedubf/wobsongo/external"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/dto"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/repo"
 	"github.com/kairosedubf/wobsongo/service"
 	"github.com/spf13/cobra"
 )
+
+var claimCheckLong bool
 
 var claimCheckCmd = &cobra.Command{
 	Use:   "claim-check [claim]",
@@ -23,6 +25,11 @@ var claimCheckCmd = &cobra.Command{
 		"Read-only: no --apply flag, nothing is mutated.",
 	Args: cobra.ExactArgs(1),
 	Run:  runClaimCheck,
+}
+
+func init() {
+	claimCheckCmd.Flags().
+		BoolVar(&claimCheckLong, "long", false, "include full reasoning and the evidence/citation list in the output (default: short paraphrased explainer only)")
 }
 
 func runClaimCheck(cmd *cobra.Command, args []string) {
@@ -69,10 +76,13 @@ func runClaimCheck(cmd *cobra.Command, args []string) {
 	ragService := service.NewRAGService(chunkRepo, knowledgeRepo, embeddingClient)
 	claimService := service.NewClaimService(analyzerClient, judgeClient, ragService)
 
-	result, err := claimService.CheckClaim(ctx, &dto.CheckClaimDTO{Text: claim})
+	result, err := claimService.CheckClaim(
+		ctx,
+		&dto.CheckClaimDTO{Text: claim, IsLong: claimCheckLong},
+	)
 	if err != nil {
 		cmd.PrintErrf("Claim check failed: %s\n", err.Error())
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic // process exit; same accepted pattern as cmd/server.go
 		return
 	}
 

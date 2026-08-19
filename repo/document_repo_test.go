@@ -193,6 +193,16 @@ func TestDocumentRepo_CRUD(t *testing.T) {
 		testhelpers.WithTxRollback(t, pool, func(ctx context.Context, q *db.Queries) {
 			documentRepo := repo.NewDocumentRepo(q, pool, nil)
 
+			// CountDocuments is a global, unscoped count (documents aren't
+			// per-tenant), so it also reflects any rows that already existed
+			// before this test ran — baseline it rather than assuming the
+			// table starts empty, so this test is correct against a fresh DB
+			// or a populated dev DB alike.
+			baseline, err := documentRepo.Paginate(ctx, &dto.PaginationDTO{Page: 1, PerPage: 1})
+			if err != nil {
+				t.Fatalf("unexpected error getting baseline count: %v", err)
+			}
+
 			const count = 3
 			for range count {
 				if err := documentRepo.Create(ctx, newTestDocument(uuid.NewString())); err != nil {
@@ -204,8 +214,12 @@ func TestDocumentRepo_CRUD(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error paginating: %v", err)
 			}
-			if results.TotalItems != count {
-				t.Errorf("expected total items %d, got %d", count, results.TotalItems)
+			if results.TotalItems != baseline.TotalItems+count {
+				t.Errorf(
+					"expected total items %d, got %d",
+					baseline.TotalItems+count,
+					results.TotalItems,
+				)
 			}
 			if len(results.Items) != 2 {
 				t.Errorf("expected 2 items on page 1, got %d", len(results.Items))

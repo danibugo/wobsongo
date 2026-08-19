@@ -106,11 +106,14 @@ func TestRAGService_Search_FusesAcrossAllFiveMethods(t *testing.T) {
 	docID := uuid.New()
 
 	chunk := model.DocumentChunk{
-		ID:         chunkID,
-		DocumentID: docID,
+		ID:             chunkID,
+		DocumentID:     docID,
+		SequenceNumber: 7,
 		ParsedChunk: model.ParsedChunk{
-			Text: "chunk text",
-			Page: 3,
+			Text:        "chunk text",
+			Page:        3,
+			LayoutType:  model.LayoutTypePicture,
+			BoundingBox: model.BoundingBox{1, 2, 3, 4},
 		},
 	}
 	fact := model.AtomicKnowledge{
@@ -187,16 +190,45 @@ func TestRAGService_Search_FusesAcrossAllFiveMethods(t *testing.T) {
 			results[0].ChunkText,
 		)
 	}
+	// A fact hit's BoundingBox/LayoutType/Page/SequenceNumber are hydrated
+	// from its parent chunk too, so it's just as clickable in a PDF-bbox
+	// viewer as a genuine chunk-source hit.
+	if results[0].Page != 3 || results[0].BoundingBox != (model.BoundingBox{1, 2, 3, 4}) ||
+		results[0].LayoutType != model.LayoutTypePicture || results[0].SequenceNumber != 7 {
+		t.Errorf(
+			"expected the fact hit's bbox/layout/page/seq hydrated from its parent chunk, got %+v",
+			results[0],
+		)
+	}
+	if results[0].ChunkID != chunkID {
+		t.Errorf(
+			"expected the fact hit's ChunkID to be its parent chunk's ID %s, got %s",
+			chunkID, results[0].ChunkID,
+		)
+	}
 	if results[1].Key != "chunk:"+chunkID.String() {
 		t.Errorf("expected the chunk ranked second, got %s", results[1].Key)
 	}
 	if results[1].Page != 3 {
 		t.Errorf("expected chunk Page 3, got %d", results[1].Page)
 	}
+	if results[1].BoundingBox != (model.BoundingBox{1, 2, 3, 4}) ||
+		results[1].LayoutType != model.LayoutTypePicture || results[1].SequenceNumber != 7 {
+		t.Errorf(
+			"expected a chunk-source hit's bbox/layout/seq mapped directly from itself, got %+v",
+			results[1],
+		)
+	}
 	if results[1].ChunkText != "" {
 		t.Errorf(
 			"expected a chunk-source hit's ChunkText to stay empty, got %q",
 			results[1].ChunkText,
+		)
+	}
+	if results[1].ChunkID != chunkID {
+		t.Errorf(
+			"expected a chunk-source hit's ChunkID to be its own ID %s, got %s",
+			chunkID, results[1].ChunkID,
 		)
 	}
 }

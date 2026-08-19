@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/kairosedubf/wobsongo/queue"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 	"github.com/riverqueue/river"
 )
@@ -125,6 +125,31 @@ func (r *DocumentChunkRepo) ListChunksNeedingTranslation(
 	documentID uuid.UUID,
 ) ([]model.DocumentChunk, error) {
 	rows, err := r.q.ListChunksNeedingTranslation(ctx, documentID)
+	if err != nil {
+		return nil, mapPostgresError(err)
+	}
+
+	chunks := make([]model.DocumentChunk, 0, len(rows))
+	for i := range rows {
+		chunks = append(chunks, *toModelDocumentChunk(&rows[i]))
+	}
+	return chunks, nil
+}
+
+// ListByDocumentIDAndPage retrieves a document's chunks on exactly one page,
+// ordered by SequenceNumber.
+func (r *DocumentChunkRepo) ListByDocumentIDAndPage(
+	ctx context.Context,
+	documentID uuid.UUID,
+	page int,
+) ([]model.DocumentChunk, error) {
+	rows, err := r.q.ListDocumentChunksByDocumentIDAndPage(
+		ctx,
+		db.ListDocumentChunksByDocumentIDAndPageParams{
+			DocumentID: documentID,
+			Page:       toInt32(page),
+		},
+	)
 	if err != nil {
 		return nil, mapPostgresError(err)
 	}

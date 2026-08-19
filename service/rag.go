@@ -42,6 +42,14 @@ type RAGResult struct {
 	Page int
 	// TruthTier is set for fact hits only; empty for chunk hits.
 	TruthTier string
+	// BoundingBox, LayoutType, and SequenceNumber come from the source
+	// chunk — the hit's own chunk for chunk-source results, or the hydrated
+	// parent chunk for fact-source results (see hydrateFactChunks). Lets a
+	// caller (e.g. the Retrieval web page) reuse the same PDF-bbox-viewer
+	// row wiring as the /chunks page for every result, regardless of source.
+	BoundingBox    model.BoundingBox
+	LayoutType     model.LayoutType
+	SequenceNumber int
 	// Language is the source chunk's/fact's own language — useful for
 	// debugging cross-lingual retrieval, since a hit's language doesn't have
 	// to match the query's.
@@ -51,9 +59,12 @@ type RAGResult struct {
 	// claim judge) the surrounding context a bare SPO fact doesn't carry on
 	// its own. Empty for chunk-source hits, which already ARE the chunk.
 	ChunkText string
-	// chunkID is a fact hit's parent chunk ID, used internally by Search to
-	// populate ChunkText — not exposed beyond this package.
-	chunkID uuid.UUID
+	// ChunkID is the chunk this hit traces back to — the hit's own ID for
+	// chunk-source results, or the parent chunk's ID for fact-source results
+	// (see hydrateFactChunks). Lets a caller (e.g. a claim check's citations)
+	// link back to a specific chunk regardless of which source produced the
+	// hit.
+	ChunkID uuid.UUID
 }
 
 // RAGService performs hybrid search across document chunks and atomic-
@@ -101,7 +112,7 @@ func (s *RAGService) Search(ctx context.Context, query string, limit int) ([]RAG
 	// errgroup.WithContext, not a plain group: unlike the LLM calls
 	// elsewhere in this codebase (where one slow/failing call shouldn't
 	// cancel its concurrently in-flight siblings), these are five fast local
-	// Postgres queries — if one fails, cancelling the rest and failing fast
+	// Postgres queries — if one fails, canceling the rest and failing fast
 	// is the right behavior, not wasted work.
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -166,11 +177,15 @@ func (s *RAGService) hydrateFactChunks(ctx context.Context, results []RAGResult)
 		if results[i].Source != "fact" {
 			continue
 		}
-		chunk, err := s.chunkRepo.GetByID(ctx, results[i].chunkID)
+		chunk, err := s.chunkRepo.GetByID(ctx, results[i].ChunkID)
 		if err != nil {
-			return fmt.Errorf("failed to fetch parent chunk %s: %w", results[i].chunkID, err)
+			return fmt.Errorf("failed to fetch parent chunk %s: %w", results[i].ChunkID, err)
 		}
 		results[i].ChunkText = chunk.Text
+		results[i].Page = chunk.Page
+		results[i].BoundingBox = chunk.BoundingBox
+		results[i].LayoutType = chunk.LayoutType
+		results[i].SequenceNumber = chunk.SequenceNumber
 	}
 	return nil
 }
@@ -182,13 +197,17 @@ func mapChunkResults(
 	out := make([]RAGResult, len(results))
 	for i, r := range results {
 		out[i] = RAGResult{
-			Key:        "chunk:" + r.Item.ID.String(),
-			Source:     "chunk",
-			Methods:    []string{method},
-			DocumentID: r.Item.DocumentID,
-			Text:       r.Item.Text,
-			Page:       r.Item.Page,
-			Language:   r.Item.Language,
+			Key:            "chunk:" + r.Item.ID.String(),
+			Source:         "chunk",
+			Methods:        []string{method},
+			DocumentID:     r.Item.DocumentID,
+			Text:           r.Item.Text,
+			Page:           r.Item.Page,
+			Language:       r.Item.Language,
+			BoundingBox:    r.Item.BoundingBox,
+			LayoutType:     r.Item.LayoutType,
+			SequenceNumber: r.Item.SequenceNumber,
+			ChunkID:        r.Item.ID,
 		}
 	}
 	return out
@@ -208,7 +227,7 @@ func mapFactResults(
 			Text:       r.Item.SPOText(),
 			TruthTier:  r.Item.TruthTier.String(),
 			Language:   r.Item.Language,
-			chunkID:    r.Item.DocumentChunkID,
+			ChunkID:    r.Item.DocumentChunkID,
 		}
 	}
 	return out
@@ -226,10 +245,11 @@ func fuseRRF(lists ...[]RAGResult) []RAGResult {
 	methodSets := make(map[string]map[string]bool)
 
 	for _, list := range lists {
-		for rank, item := range list {
+		for rank := range list {
+			item := &list[rank]
 			scores[item.Key] += 1.0 / (rrfK + float64(rank+1))
 			if _, ok := seen[item.Key]; !ok {
-				seen[item.Key] = item
+				seen[item.Key] = *item
 				methodSets[item.Key] = make(map[string]bool)
 			}
 			for _, m := range item.Methods {
@@ -239,7 +259,7 @@ func fuseRRF(lists ...[]RAGResult) []RAGResult {
 	}
 
 	fused := make([]RAGResult, 0, len(seen))
-	for key, item := range seen {
+	for key, item := range seen { //nolint:gocritic // map values aren't addressable; copy-mutate-append is the pattern here, not an oversight
 		item.RRFScore = scores[key]
 
 		methods := make([]string, 0, len(methodSets[key]))

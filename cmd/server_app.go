@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/core"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/repo"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/riverqueue/river"
 )
@@ -25,14 +25,16 @@ type buildAppClaimCheckDeps struct {
 }
 
 // buildApp initializes all API-facing repositories and returns a configured core.App.
-// mediaProvider is constructed by the caller (cmd/server.go), shared with any
-// River workers that also need it, rather than built again here.
+// mediaProvider and rawStore are constructed by the caller (cmd/server.go) — the
+// same *repo.S3Provider satisfies both interfaces but is passed separately so each
+// field is statically typed at the call site.
 func buildApp(
 	cfg *config.Config,
 	pool *pgxpool.Pool,
 	riverClient *river.Client[pgx.Tx],
 	mediaProvider data.MediaUploadProvider,
-	claimCheck buildAppClaimCheckDeps,
+	rawStore data.RawObjectStore,
+	claimCheck buildAppClaimCheckDeps, //nolint:gocritic // negligible perf impact at this call frequency; not worth the pointer-indirection tradeoff
 ) *core.App {
 	queries := db.New(pool)
 
@@ -44,6 +46,7 @@ func buildApp(
 		cfg,
 		core.WithDocumentRepo(documentRepo),
 		core.WithMediaProvider(mediaProvider),
+		core.WithRawObjectStore(rawStore),
 		core.WithChunkRepo(claimCheck.chunkRepo),
 		core.WithKnowledgeRepo(claimCheck.knowledgeRepo),
 		core.WithEmbedder(claimCheck.embedder),

@@ -38,7 +38,7 @@ func (h *ClaimHandler) checkClaimHandler(c echo.Context) error {
 		return &model.APIError{
 			Code:     http.StatusBadRequest,
 			Internal: err,
-			Public:   "invalid request body",
+			Public:   msgInvalidRequestBody,
 		}
 	}
 	if err := c.Validate(req); err != nil {
@@ -78,6 +78,7 @@ func toClaimCheckResponse(result *service.ClaimCheckResult) dto.ClaimCheckRespon
 				Index:      cit.Index,
 				Source:     cit.Source,
 				DocumentID: cit.DocumentID,
+				ChunkID:    cit.ChunkID,
 				Text:       cit.Text,
 			}
 		}
@@ -87,6 +88,7 @@ func toClaimCheckResponse(result *service.ClaimCheckResult) dto.ClaimCheckRespon
 			Severity:                sc.Severity.String(),
 			RecommendMedicalConsult: sc.RecommendMedicalConsult,
 			Reasoning:               sc.Reasoning,
+			BriefReasoning:          sc.BriefReasoning,
 			Citations:               citations,
 		}
 	}

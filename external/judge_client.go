@@ -22,6 +22,9 @@ const judgeMaxTokens = 1500
 // judgeHTTPTimeout bounds a single judge call.
 const judgeHTTPTimeout = 3 * time.Minute
 
+// judgeChatRoleUser is the chat-completion message role for the caller's input.
+const judgeChatRoleUser = "user"
+
 // JudgeClient implements data.ClaimJudge against a generic OpenAI-compatible
 // text chat-completions API — same shape as ExtractionClient.
 type JudgeClient struct {
@@ -53,6 +56,7 @@ type judgeVerdictJSON struct {
 	Severity                string `json:"severity"`
 	RecommendMedicalConsult bool   `json:"recommend_medical_consult"`
 	Reasoning               string `json:"reasoning"`
+	BriefReasoning          string `json:"brief_reasoning"`
 	CitedEvidence           []int  `json:"cited_evidence"`
 }
 
@@ -64,7 +68,7 @@ func (c *JudgeClient) Judge(
 	payload := extractionCompletionRequest{
 		Model: c.model,
 		Messages: []extractionChatMessage{
-			{Role: "user", Content: buildJudgePrompt(req)},
+			{Role: judgeChatRoleUser, Content: buildJudgePrompt(req)},
 		},
 		MaxTokens: judgeMaxTokens,
 	}
@@ -173,6 +177,7 @@ func (c *JudgeClient) Judge(
 		Severity:                severity,
 		RecommendMedicalConsult: recommendConsult,
 		Reasoning:               raw.Reasoning,
+		BriefReasoning:          raw.BriefReasoning,
 		CitedEvidence:           validCitations,
 	}, nil
 }
@@ -227,7 +232,7 @@ func buildJudgePrompt(req *data.JudgeRequest) string {
 	)
 	b.WriteString(
 		`{"verdict": "...", "severity": "...", "recommend_medical_consult": true/false, ` +
-			`"reasoning": "...", "cited_evidence": [0, 2]}` + "\n\n",
+			`"reasoning": "...", "brief_reasoning": "...", "cited_evidence": [0, 2]}` + "\n\n",
 	)
 	b.WriteString("verdict must be exactly one of: supported, contradicted, partially_supported, ")
 	b.WriteString("mixed, insufficient_evidence.\n")
@@ -265,7 +270,15 @@ func buildJudgePrompt(req *data.JudgeRequest) string {
 		`"[N]" using that same 0-based index from the Evidence list — e.g. "evidence [2] ` +
 			`states...". Every index you cite inline in reasoning must also appear in cited_evidence, ` +
 			"and vice versa: the two must match exactly, so a reader can look up any \"[N]\" in your " +
-			"reasoning against the same-numbered item in cited_evidence.\n",
+			"reasoning against the same-numbered item in cited_evidence.\n\n",
+	)
+	fmt.Fprintf(
+		&b,
+		"brief_reasoning must be a single, self-contained plain-language sentence in %s "+
+			"paraphrasing your reasoning — it will be shown on its own, without the evidence list, "+
+			"so it must NEVER use inline \"[N]\" citation markers or otherwise assume the reader can "+
+			"see the evidence.\n",
+		languageDisplayNames[req.ResponseLanguage],
 	)
 
 	return b.String()

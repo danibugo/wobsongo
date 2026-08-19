@@ -1,0 +1,39 @@
+package evidence
+
+import (
+	"fmt"
+
+	"github.com/kairosedubf/wobsongo/model"
+	"github.com/kairosedubf/wobsongo/view/layout"
+)
+
+// ViewPageData holds the data for the standalone evidence-viewer page — a
+// chrome-free page (no dashboard sidebar) showing exactly one chunk's
+// location in its source PDF, meant as a link target (e.g. from a claim
+// check's citations) rather than something navigated to within the app.
+type ViewPageData struct {
+	DocumentTitle string
+	Page          int
+	PDFURL        string
+	BoundingBox   model.BoundingBox
+}
+
+templ View(data ViewPageData) {
+	@layout.Public(data.DocumentTitle) {
+		<h1 class="text-sm text-muted-foreground">
+			{ fmt.Sprintf("%s — page %d", data.DocumentTitle, data.Page) }
+		</h1>
+		<script type="module" src="/static/js/pdf-bbox-viewer.js"></script>
+		<div class="w-full max-w-4xl h-[92vh] rounded-md border overflow-auto">
+			<pdf-bbox-viewer
+				url={ data.PDFURL }
+				scale="1.1"
+				page-number={ fmt.Sprintf("%d", data.Page) }
+				lefts={ fmt.Sprintf("%g", data.BoundingBox[0]) }
+				tops={ fmt.Sprintf("%g", data.BoundingBox[1]) }
+				rights={ fmt.Sprintf("%g", data.BoundingBox[2]) }
+				bottoms={ fmt.Sprintf("%g", data.BoundingBox[3]) }
+			></pdf-bbox-viewer>
+		</div>
+	}
+}

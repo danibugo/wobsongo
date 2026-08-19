@@ -18,6 +18,9 @@ import (
 // captionMaxTokens bounds the VLM's response length for a single caption.
 const captionMaxTokens = 500
 
+// vlmChatRoleUser is the chat-completion message role for the caller's input.
+const vlmChatRoleUser = "user"
+
 // VLMClient implements data.ImageCaptioner against a generic
 // OpenAI-compatible vision chat-completions API — works unmodified against
 // self-hosted vLLM/Ollama or any hosted open-weight-model provider using
@@ -102,7 +105,7 @@ func (c *VLMClient) Caption(ctx context.Context, req *data.CaptionRequest) (stri
 		Model: c.model,
 		Messages: []chatMessage{
 			{
-				Role: "user",
+				Role: vlmChatRoleUser,
 				Content: []chatContentPart{
 					{Type: "text", Text: buildPrompt(req)},
 					{Type: "image_url", ImageURL: &imageURL{URL: dataURL}},

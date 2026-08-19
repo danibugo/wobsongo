@@ -1,0 +1,136 @@
+package knowledge
+
+import (
+	"fmt"
+	"math"
+
+	"github.com/kairosedubf/wobsongo/components/pagination"
+	"github.com/kairosedubf/wobsongo/components/table"
+	"github.com/kairosedubf/wobsongo/dto"
+	"github.com/kairosedubf/wobsongo/model"
+	"github.com/kairosedubf/wobsongo/view/layout"
+)
+
+// ListPageData holds the data for the knowledge list page.
+type ListPageData struct {
+	layout.AppLayoutData
+	Results            dto.PaginationResults[model.AtomicKnowledge]
+	Documents          []model.Document
+	SelectedDocumentID string
+	HasSelection       bool
+}
+
+// totalPages computes the total number of pages.
+func totalPages(totalItems, perPage int) int {
+	if perPage <= 0 {
+		return 1
+	}
+	return int(math.Ceil(float64(totalItems) / float64(perPage)))
+}
+
+// documentTitle returns the display title: Title if set, otherwise Filename.
+func documentTitle(doc model.Document) string {
+	if doc.Title != "" {
+		return doc.Title
+	}
+	return doc.Filename
+}
+
+templ List(data ListPageData) {
+	{{ data.Breadcrumbs = []layout.Crumb{{Label: "Knowledge", Href: ""}} }}
+	@layout.App(data.AppLayoutData) {
+		<div class="mb-6">
+			<form method="GET" action="/knowledge" class="flex items-center gap-2">
+				<select
+					name="document_id"
+					class="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					onchange="this.form.submit()"
+				>
+					<option value="">Select a document…</option>
+					for _, doc := range data.Documents {
+						<option value={ doc.ID.String() } selected?={ doc.ID.String() == data.SelectedDocumentID }>
+							{ documentTitle(doc) }
+						</option>
+					}
+				</select>
+			</form>
+		</div>
+		if !data.HasSelection {
+			<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+				<p class="text-sm">Select a document to view its knowledge.</p>
+			</div>
+		} else if len(data.Results.Items) == 0 {
+			<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+				<p class="text-sm">No knowledge extracted for this document.</p>
+			</div>
+		} else {
+			@table.Table() {
+				@table.Header() {
+					@table.Row() {
+						@table.Head() { Subject }
+						@table.Head() { Predicate }
+						@table.Head() { Object }
+						@table.Head() { Truth Tier }
+						@table.Head() { Category }
+						@table.Head() { Created }
+					}
+				}
+				@table.Body() {
+					for _, fact := range data.Results.Items {
+						@table.Row() {
+							@table.Cell(table.CellProps{Class: "font-medium max-w-xs truncate"}) {
+								{ fact.Subject }
+							}
+							@table.Cell(table.CellProps{Class: "text-muted-foreground max-w-xs truncate"}) {
+								{ fact.Predicate }
+							}
+							@table.Cell(table.CellProps{Class: "text-muted-foreground max-w-xs truncate"}) {
+								{ fact.Object }
+							}
+							@table.Cell() {
+								{ fact.TruthTier.String() }
+							}
+							@table.Cell() {
+								{ fact.Category.String() }
+							}
+							@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+								{ fact.CreatedAt.Format("2 Jan 2006") }
+							}
+						}
+					}
+				}
+			}
+			{{ pages := pagination.CreatePagination(data.Results.Page, totalPages(data.Results.TotalItems, data.Results.PerPage), 7) }}
+			if pages.TotalPages > 1 {
+				<div class="mt-6 flex justify-center">
+					@pagination.Pagination() {
+						@pagination.Content() {
+							@pagination.Item() {
+								@pagination.Previous(pagination.PreviousProps{
+									Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, pages.CurrentPage-1),
+									Disabled: !pages.HasPrevious,
+								})
+							}
+							for _, p := range pages.Pages {
+								@pagination.Item() {
+									@pagination.Link(pagination.LinkProps{
+										Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, p),
+										IsActive: p == pages.CurrentPage,
+									}) {
+										{ fmt.Sprintf("%d", p) }
+									}
+								}
+							}
+							@pagination.Item() {
+								@pagination.Next(pagination.NextProps{
+									Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, pages.CurrentPage+1),
+									Disabled: !pages.HasNext,
+								})
+							}
+						}
+					}
+				</div>
+			}
+		}
+	}
+}

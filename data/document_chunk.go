@@ -19,6 +19,16 @@ type DocumentChunkRepoer interface {
 	// ListByDocumentID retrieves all chunks for a document, ordered by SequenceNumber.
 	ListByDocumentID(ctx context.Context, documentID uuid.UUID) ([]model.DocumentChunk, error)
 
+	// ListByDocumentIDAndPage retrieves a document's chunks on exactly one
+	// page, ordered by SequenceNumber. Used by the chunk list page, which
+	// shows exactly one PDF page per screen — see model.Document.PageCount
+	// for the total-pages source driving that page's pagination nav.
+	ListByDocumentIDAndPage(
+		ctx context.Context,
+		documentID uuid.UUID,
+		page int,
+	) ([]model.DocumentChunk, error)
+
 	// ListChunksNeedingEmbedding retrieves chunks for a document that have
 	// text but no embedding yet, ordered by SequenceNumber. Used by
 	// EmbedChunksWorker; the filter also makes retries idempotent — a chunk

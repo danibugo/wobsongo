@@ -1,0 +1,200 @@
+package documents
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/kairosedubf/wobsongo/components/alert"
+	"github.com/kairosedubf/wobsongo/components/button"
+	"github.com/kairosedubf/wobsongo/components/form"
+	"github.com/kairosedubf/wobsongo/components/input"
+	"github.com/kairosedubf/wobsongo/components/label"
+	"github.com/kairosedubf/wobsongo/model"
+	"github.com/kairosedubf/wobsongo/view/layout"
+)
+
+// FormPageData holds data for the create and edit document forms.
+type FormPageData struct {
+	layout.AppLayoutData
+	Document *model.Document // nil = create, non-nil = edit
+	Error    string
+}
+
+templ Form(data FormPageData) {
+	if data.Document == nil {
+		{{ data.Breadcrumbs = []layout.Crumb{
+			{Label: "Documents", Href: "/documents"},
+			{Label: "New", Href: ""},
+		} }}
+	} else {
+		{{ data.Breadcrumbs = []layout.Crumb{
+			{Label: "Documents", Href: "/documents"},
+			{Label: "Edit", Href: ""},
+		} }}
+	}
+	@layout.App(data.AppLayoutData) {
+		<div class="max-w-xl">
+			if data.Error != "" {
+				<div class="mb-4">
+					@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+						@alert.Description() {
+							{ data.Error }
+						}
+					}
+				</div>
+			}
+			if data.Document == nil {
+				<form
+					method="POST"
+					action="/documents/new"
+					enctype="multipart/form-data"
+					class="flex flex-col gap-4"
+				>
+					<input type="hidden" name="_csrf" value={ data.CSRFToken }/>
+					@form.Item() {
+						@label.Label(label.Props{For: "file"}) {
+							File
+						}
+						<input
+							id="file"
+							name="file"
+							type="file"
+							required
+							accept=".pdf,.docx,.doc,.rtf,.html,.md,.jpg,.jpeg,.png,.webp,.avif"
+							class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+						/>
+						@form.Description() {
+							PDF, DOCX, DOC, RTF, HTML, MD, or image files up to 50 MB.
+						}
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "title"}) {
+							Title
+						}
+						@input.Input(input.Props{
+							ID:          "title",
+							Name:        "title",
+							Type:        input.TypeText,
+							Placeholder: "Optional — backfilled from document if omitted",
+						})
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "publisher"}) {
+							Publisher
+						}
+						@input.Input(input.Props{
+							ID:          "publisher",
+							Name:        "publisher",
+							Type:        input.TypeText,
+							Placeholder: "Optional",
+						})
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "year"}) {
+							Publication year
+						}
+						@input.Input(input.Props{
+							ID:          "year",
+							Name:        "year",
+							Type:        input.TypeNumber,
+							Placeholder: "Optional",
+						})
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "language"}) {
+							Language
+						}
+						<select
+							id="language"
+							name="language"
+							required
+							class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<option value="">Select language…</option>
+							<option value="en">English</option>
+							<option value="fr">French</option>
+						</select>
+					}
+					@button.Button(button.Props{
+						Type:      button.TypeSubmit,
+						FullWidth: true,
+					}) {
+						Upload document
+					}
+				</form>
+			} else {
+				<form
+					method="POST"
+					action={ templ.SafeURL(fmt.Sprintf("/documents/%s/edit", data.Document.ID)) }
+					class="flex flex-col gap-4"
+				>
+					<input type="hidden" name="_csrf" value={ data.CSRFToken }/>
+					@form.Item() {
+						@label.Label(label.Props{For: "title"}) {
+							Title
+						}
+						@input.Input(input.Props{
+							ID:    "title",
+							Name:  "title",
+							Type:  input.TypeText,
+							Value: data.Document.Title,
+						})
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "publisher"}) {
+							Publisher
+						}
+						@input.Input(input.Props{
+							ID:    "publisher",
+							Name:  "publisher",
+							Type:  input.TypeText,
+							Value: data.Document.PublisherName,
+						})
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "year"}) {
+							Publication year
+						}
+						@input.Input(input.Props{
+							ID:    "year",
+							Name:  "year",
+							Type:  input.TypeNumber,
+							Value: yearString(data.Document.PublicationYear),
+						})
+					}
+					@form.Item() {
+						@label.Label(label.Props{For: "language"}) {
+							Language
+						}
+						<select
+							id="language"
+							name="language"
+							disabled
+							class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<option value="en" selected?={ data.Document.Language == model.LanguageEnglish }>English</option>
+							<option value="fr" selected?={ data.Document.Language == model.LanguageFrench }>French</option>
+						</select>
+						@form.Description() {
+							Language cannot be changed after upload.
+						}
+					}
+					@button.Button(button.Props{
+						Type:      button.TypeSubmit,
+						FullWidth: true,
+					}) {
+						Save changes
+					}
+				</form>
+			}
+		</div>
+	}
+}
+
+// yearString converts a publication year to a string; returns "" for zero.
+func yearString(year int) string {
+	if year == 0 {
+		return ""
+	}
+	return strconv.Itoa(year)
+}

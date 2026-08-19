@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/auth"
+	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/handler"
+	"github.com/kairosedubf/wobsongo/ui"
 	"github.com/kairosedubf/wobsongo/validation"
 	"github.com/kairosedubf/wobsongo/webhandler"
-	"github.com/kairosedubf/wobsongo/ui"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -27,6 +27,7 @@ type App struct {
 	apiGroup      *echo.Group
 	documentRepo  data.DocumentRepoer
 	mediaProvider data.MediaUploadProvider
+	rawStore      data.RawObjectStore
 	chunkRepo     data.DocumentChunkRepoer
 	knowledgeRepo data.AtomicKnowledgeRepoer
 	embedder      data.Embedder
@@ -81,6 +82,13 @@ func WithDocumentRepo(repo data.DocumentRepoer) AppOption {
 func WithMediaProvider(provider data.MediaUploadProvider) AppOption {
 	return func(a *App) {
 		a.mediaProvider = provider
+	}
+}
+
+// WithRawObjectStore sets the raw S3 store used for server-side file uploads.
+func WithRawObjectStore(s data.RawObjectStore) AppOption {
+	return func(a *App) {
+		a.rawStore = s
 	}
 }
 
@@ -178,7 +186,19 @@ func NewApp(e *echo.Echo, config *config.Config, optionFuncs ...AppOption) *App 
 		}),
 	)
 	webhandler.RegisterWebRoutes(
-		webGroup, &webhandler.WebRepos{UserRepo: app.userRepo}, jwtAuth, config,
+		webGroup,
+		&webhandler.WebRepos{
+			UserRepo:      app.userRepo,
+			DocumentRepo:  app.documentRepo,
+			RawStore:      app.rawStore,
+			ChunkRepo:     app.chunkRepo,
+			KnowledgeRepo: app.knowledgeRepo,
+			MediaProvider: app.mediaProvider,
+			Embedder:      app.embedder,
+			ClaimAnalyzer: app.claimAnalyzer,
+			ClaimJudge:    app.claimJudge,
+		},
+		jwtAuth, config,
 	)
 
 	e.StaticFS("/static", ui.StaticFS)

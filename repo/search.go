@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kairosedubf/wobsongo/data"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kairosedubf/wobsongo/data"
 )
 
 // searchScored runs a raw (id, score) query — ordered/limited by the

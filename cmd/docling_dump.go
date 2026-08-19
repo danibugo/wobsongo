@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kairosedubf/wobsongo/external"
 	appconfig "github.com/kairosedubf/wobsongo/config"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/spf13/cobra"
 )
 

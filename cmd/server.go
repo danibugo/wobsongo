@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
@@ -11,7 +12,6 @@ import (
 	"github.com/kairosedubf/wobsongo/repo"
 	"github.com/kairosedubf/wobsongo/service"
 	"github.com/kairosedubf/wobsongo/worker"
-	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/spf13/cobra"
@@ -160,7 +160,10 @@ var serveCmd = &cobra.Command{
 			extractionClient,
 			cfg.ExtractionConfig.Concurrency,
 		))
-		river.AddWorker(workers, worker.NewEmbedKnowledgeWorker(atomicKnowledgeRepo, embeddingClient))
+		river.AddWorker(
+			workers,
+			worker.NewEmbedKnowledgeWorker(atomicKnowledgeRepo, embeddingClient),
+		)
 		river.AddWorker(workers, worker.NewTranslateChunksWorker(
 			chunkRepo,
 			documentService,
@@ -197,13 +200,20 @@ var serveCmd = &cobra.Command{
 		}()
 
 		// Build and start HTTP API server.
-		app := buildApp(cfg, pool, riverClient, mediaProvider, buildAppClaimCheckDeps{
-			chunkRepo:     chunkRepo,
-			knowledgeRepo: atomicKnowledgeRepo,
-			embedder:      embeddingClient,
-			claimAnalyzer: claimAnalyzerClient,
-			claimJudge:    judgeClient,
-		})
+		app := buildApp(
+			cfg,
+			pool,
+			riverClient,
+			mediaProvider,
+			mediaProvider,
+			buildAppClaimCheckDeps{
+				chunkRepo:     chunkRepo,
+				knowledgeRepo: atomicKnowledgeRepo,
+				embedder:      embeddingClient,
+				claimAnalyzer: claimAnalyzerClient,
+				claimJudge:    judgeClient,
+			},
+		)
 
 		cmd.Printf("Starting the server at %s\n", cfg.APIHost)
 		if err := app.Start(); err != nil {

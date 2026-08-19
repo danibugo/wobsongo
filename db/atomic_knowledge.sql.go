@@ -14,6 +14,17 @@ import (
 	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
+const countAtomicKnowledgeByDocumentID = `-- name: CountAtomicKnowledgeByDocumentID :one
+SELECT count(*) FROM atomic_knowledge WHERE document_id = $1
+`
+
+func (q *Queries) CountAtomicKnowledgeByDocumentID(ctx context.Context, documentID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAtomicKnowledgeByDocumentID, documentID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 type CreateAtomicKnowledgeBatchParams struct {
 	ID                   uuid.UUID
 	CreatedAt            time.Time
@@ -72,6 +83,56 @@ ORDER BY created_at ASC
 
 func (q *Queries) ListKnowledgeNeedingEmbedding(ctx context.Context, documentID uuid.UUID) ([]AtomicKnowledge, error) {
 	rows, err := q.db.Query(ctx, listKnowledgeNeedingEmbedding, documentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AtomicKnowledge
+	for rows.Next() {
+		var i AtomicKnowledge
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DocumentID,
+			&i.DocumentChunkID,
+			&i.TruthTier,
+			&i.Topics,
+			&i.Subject,
+			&i.Predicate,
+			&i.Object,
+			&i.Note,
+			&i.MarkedAsInvalid,
+			&i.MarkedAsIrrelevant,
+			&i.Embedding,
+			&i.Category,
+			&i.Language,
+			&i.SearchTextTranslated,
+			&i.FtsEn,
+			&i.FtsFr,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const paginateAtomicKnowledgeByDocumentID = `-- name: PaginateAtomicKnowledgeByDocumentID :many
+SELECT id, created_at, updated_at, document_id, document_chunk_id, truth_tier, topics, subject, predicate, object, note, marked_as_invalid, marked_as_irrelevant, embedding, category, language, search_text_translated, fts_en, fts_fr FROM atomic_knowledge WHERE document_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+`
+
+type PaginateAtomicKnowledgeByDocumentIDParams struct {
+	DocumentID uuid.UUID
+	Limit      int32
+	Offset     int32
+}
+
+func (q *Queries) PaginateAtomicKnowledgeByDocumentID(ctx context.Context, arg PaginateAtomicKnowledgeByDocumentIDParams) ([]AtomicKnowledge, error) {
+	rows, err := q.db.Query(ctx, paginateAtomicKnowledgeByDocumentID, arg.DocumentID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

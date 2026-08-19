@@ -4,18 +4,18 @@ package utils
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
+	twmerge "github.com/Oudwins/tailwind-merge-go"
 	"github.com/a-h/templ"
 	"github.com/templui/templui/components"
-
-	twmerge "github.com/Oudwins/tailwind-merge-go"
 )
 
 // TwMerge combines Tailwind classes and resolves conflicts.
@@ -48,9 +48,7 @@ func IfElse[T any](condition bool, trueValue T, falseValue T) T {
 func MergeAttributes(attrs ...templ.Attributes) templ.Attributes {
 	merged := templ.Attributes{}
 	for _, attr := range attrs {
-		for k, v := range attr {
-			merged[k] = v
-		}
+		maps.Copy(merged, attr)
 	}
 	return merged
 }
@@ -58,12 +56,12 @@ func MergeAttributes(attrs ...templ.Attributes) templ.Attributes {
 // RandomID generates a random ID string.
 // Example: RandomID() → "id-1a2b3c"
 func RandomID() string {
-	return fmt.Sprintf("id-%s", rand.Text())
+	return "id-" + rand.Text()
 }
 
 // ScriptVersion is a timestamp generated at app start for cache busting.
 // Used in component script tags to append ?v=<timestamp> to script URLs.
-var ScriptVersion = fmt.Sprintf("%d", time.Now().Unix())
+var ScriptVersion = strconv.FormatInt(time.Now().Unix(), 10)
 
 // ScriptURL generates cache-busted script URLs.
 // Override this to use custom cache busting (CDN, content hashing, etc.)
@@ -155,7 +153,9 @@ func SetupScriptRoutes(mux *http.ServeMux, isDevelopment bool) {
 			http.NotFound(w, r)
 			return
 		}
-		_, _ = w.Write(file)
+		// file comes from an embedded, closed set of known JS assets after a
+		// path-traversal check above — never attacker-controlled content.
+		_, _ = w.Write(file) //nolint:gosec // G705 false positive
 	})
 
 	mux.Handle("GET /templui/js/", handler)

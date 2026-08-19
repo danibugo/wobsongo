@@ -45,7 +45,7 @@ func (h *DocumentHandler) createDocumentHandler(c echo.Context) error {
 		return &model.APIError{
 			Code:     http.StatusBadRequest,
 			Internal: err,
-			Public:   "invalid request body",
+			Public:   msgInvalidRequestBody,
 		}
 	}
 	if err := c.Validate(req); err != nil {
@@ -161,7 +161,7 @@ func (h *DocumentHandler) updateDocumentHandler(c echo.Context) error {
 		return &model.APIError{
 			Code:     http.StatusBadRequest,
 			Internal: err,
-			Public:   "invalid request body",
+			Public:   msgInvalidRequestBody,
 		}
 	}
 	if err := c.Validate(req); err != nil {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"os"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/queue"
 	"github.com/kairosedubf/wobsongo/repo"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/spf13/cobra"
@@ -75,7 +75,7 @@ func runBackfillTranslations(cmd *cobra.Command, _ []string) {
 	})
 	if err != nil {
 		cmd.PrintErrf("Failed to initialize job queue client: %s\n", err.Error())
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic // process exit; same accepted pattern as cmd/server.go
 		return
 	}
 

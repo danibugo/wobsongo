@@ -245,6 +245,57 @@ func (q *Queries) ListDocumentChunksByDocumentID(ctx context.Context, documentID
 	return items, nil
 }
 
+const listDocumentChunksByDocumentIDAndPage = `-- name: ListDocumentChunksByDocumentIDAndPage :many
+SELECT id, created_at, updated_at, document_id, sequence_number, topics, factuality_score, text, page, chapter, layout_type, bounding_box, asset_url, embedding, knowledge_extracted_at, language, text_translated, text_fts_en, text_fts_fr FROM document_chunks
+WHERE document_id = $1 AND page = $2
+ORDER BY sequence_number ASC
+`
+
+type ListDocumentChunksByDocumentIDAndPageParams struct {
+	DocumentID uuid.UUID
+	Page       int32
+}
+
+func (q *Queries) ListDocumentChunksByDocumentIDAndPage(ctx context.Context, arg ListDocumentChunksByDocumentIDAndPageParams) ([]DocumentChunk, error) {
+	rows, err := q.db.Query(ctx, listDocumentChunksByDocumentIDAndPage, arg.DocumentID, arg.Page)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DocumentChunk
+	for rows.Next() {
+		var i DocumentChunk
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DocumentID,
+			&i.SequenceNumber,
+			&i.Topics,
+			&i.FactualityScore,
+			&i.Text,
+			&i.Page,
+			&i.Chapter,
+			&i.LayoutType,
+			&i.BoundingBox,
+			&i.AssetUrl,
+			&i.Embedding,
+			&i.KnowledgeExtractedAt,
+			&i.Language,
+			&i.TextTranslated,
+			&i.TextFtsEn,
+			&i.TextFtsFr,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocumentIDsNeedingTranslation = `-- name: ListDocumentIDsNeedingTranslation :many
 SELECT DISTINCT document_id FROM document_chunks
 WHERE text != '' AND text_translated IS NULL

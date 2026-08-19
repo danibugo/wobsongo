@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/external"
 )
 
 func TestVLMClient_Caption_Success(t *testing.T) {

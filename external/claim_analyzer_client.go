@@ -30,6 +30,9 @@ const analyzerHTTPTimeout = 2 * time.Minute
 // judge cost per request.
 const analyzerMaxSubClaims = 5
 
+// analyzerChatRoleUser is the chat-completion message role for the caller's input.
+const analyzerChatRoleUser = "user"
+
 // ClaimAnalyzerClient implements data.ClaimAnalyzer against a generic
 // OpenAI-compatible text chat-completions API — same shape as ExtractionClient.
 type ClaimAnalyzerClient struct {
@@ -72,7 +75,7 @@ func (c *ClaimAnalyzerClient) Analyze(
 	payload := extractionCompletionRequest{
 		Model: c.model,
 		Messages: []extractionChatMessage{
-			{Role: "user", Content: buildAnalyzerPrompt(message)},
+			{Role: analyzerChatRoleUser, Content: buildAnalyzerPrompt(message)},
 		},
 		MaxTokens: analyzerMaxTokens,
 	}

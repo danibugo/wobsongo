@@ -1,0 +1,247 @@
+package chunks
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/kairosedubf/wobsongo/components/pagination"
+	"github.com/kairosedubf/wobsongo/components/table"
+	"github.com/kairosedubf/wobsongo/components/tooltip"
+	"github.com/kairosedubf/wobsongo/model"
+	"github.com/kairosedubf/wobsongo/view/layout"
+)
+
+// ListPageData holds the data for the chunk list page.
+type ListPageData struct {
+	layout.AppLayoutData
+	// Chunks are the chunks on CurrentPage only — the page shows exactly one
+	// PDF page of chunks at a time.
+	Chunks []model.DocumentChunk
+	// CurrentPage is the PDF page number currently displayed.
+	CurrentPage int
+	// TotalPages is the document's total page count (model.Document.PageCount),
+	// driving the pagination nav 1:1 with actual PDF pages — not just pages
+	// that happen to have chunks.
+	TotalPages         int
+	Documents          []model.Document
+	SelectedDocumentID string
+	HasSelection       bool
+	// PDFURL is a presigned GET URL for the selected document's raw file,
+	// only set when that document is a PDF — the viewer pane is PDF-only.
+	PDFURL string
+}
+
+// documentTitle returns the display title: Title if set, otherwise Filename.
+func documentTitle(doc model.Document) string {
+	if doc.Title != "" {
+		return doc.Title
+	}
+	return doc.Filename
+}
+
+// textPreview truncates chunk text to a short single-line preview.
+func textPreview(text string) string {
+	const maxLen = 80
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen] + "…"
+}
+
+// chunkBBox formats a chunk's bounding box as a "left,top,right,bottom"
+// string for a data attribute — the exact DoclingBBox field order the
+// pdf-bbox-viewer bundle's doclingBboxesToProps expects.
+func chunkBBox(chunk model.DocumentChunk) string {
+	b := chunk.BoundingBox
+	return fmt.Sprintf("%g,%g,%g,%g", b[0], b[1], b[2], b[3])
+}
+
+templ List(data ListPageData) {
+	{{ data.Breadcrumbs = []layout.Crumb{{Label: "Chunks", Href: ""}} }}
+	@layout.App(data.AppLayoutData) {
+		<div class="mb-6">
+			<form method="GET" action="/chunks" class="flex items-center gap-2">
+				<select
+					name="document_id"
+					class="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					onchange="this.form.submit()"
+				>
+					<option value="">Select a document…</option>
+					for _, doc := range data.Documents {
+						<option value={ doc.ID.String() } selected?={ doc.ID.String() == data.SelectedDocumentID }>
+							{ documentTitle(doc) }
+						</option>
+					}
+				</select>
+			</form>
+		</div>
+		if !data.HasSelection {
+			<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+				<p class="text-sm">Select a document to view its chunks.</p>
+			</div>
+		} else {
+			<div class="grid grid-cols-[minmax(0,1fr)_640px] gap-6 items-start">
+				<div class="min-w-0 overflow-x-auto">
+					if data.TotalPages <= 0 {
+						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+							<p class="text-sm">No chunks for this document yet.</p>
+						</div>
+					} else {
+						if len(data.Chunks) == 0 {
+							<div class="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+								<p class="text-sm">No chunks detected on this page.</p>
+							</div>
+						} else {
+							@tooltip.Script()
+							@table.Table() {
+								@table.Header() {
+									@table.Row() {
+										@table.Head() { Seq }
+										@table.Head() { Layout Type }
+										@table.Head() { Language }
+										@table.Head() { Text }
+									}
+								}
+								@table.Body() {
+									for _, chunk := range data.Chunks {
+										@table.Row(table.RowProps{
+											Class: "chunk-row cursor-pointer",
+											Attributes: templ.Attributes{
+												"data-page": fmt.Sprintf("%d", chunk.Page),
+												"data-bbox": chunkBBox(chunk),
+											},
+										}) {
+											@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+												{ fmt.Sprintf("%d", chunk.SequenceNumber) }
+											}
+											@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+												{ string(chunk.LayoutType) }
+											}
+											@table.Cell() {
+												{ chunk.Language.String() }
+											}
+											@table.Cell(table.CellProps{Class: "max-w-[220px]"}) {
+												@tooltip.Tooltip() {
+													@tooltip.Trigger(tooltip.TriggerProps{}) {
+														<span class="block truncate cursor-help">{ textPreview(chunk.Text) }</span>
+													}
+													@tooltip.Content(tooltip.ContentProps{
+														Position:      tooltip.PositionTop,
+														Class:         "max-w-sm whitespace-pre-wrap break-words text-left",
+														HoverDelay:    200,
+														HoverOutDelay: 100,
+													}) {
+														{ chunk.Text }
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+							<script type="module">
+								const viewer = document.getElementById('chunk-pdf-viewer');
+								let pinnedRow = null;
+
+								function clearHighlight() {
+									if (!viewer) return;
+									viewer.setAttribute('lefts', '');
+									viewer.setAttribute('bottoms', '');
+									viewer.setAttribute('rights', '');
+									viewer.setAttribute('tops', '');
+								}
+
+								async function applyChunk(row) {
+									if (!viewer) return;
+									const { doclingBboxesToProps } = await import('/static/js/pdf-bbox-viewer.js');
+									const page = row.dataset.page;
+									const bbox = (row.dataset.bbox || '').split(',').map(Number);
+									if (bbox.length !== 4 || bbox.some(Number.isNaN)) return;
+									const attrs = doclingBboxesToProps([bbox]);
+									viewer.setAttribute('page-number', page);
+									viewer.setAttribute('lefts', attrs.lefts);
+									viewer.setAttribute('bottoms', attrs.bottoms);
+									viewer.setAttribute('rights', attrs.rights);
+									viewer.setAttribute('tops', attrs.tops);
+								}
+
+								document.querySelectorAll('.chunk-row').forEach((row) => {
+									row.addEventListener('mouseenter', () => {
+										applyChunk(row);
+										if (row !== pinnedRow) {
+											row.style.backgroundColor = 'var(--muted)';
+										}
+									});
+									row.addEventListener('mouseleave', () => {
+										if (row !== pinnedRow) {
+											row.style.backgroundColor = '';
+										}
+										if (pinnedRow) {
+											applyChunk(pinnedRow);
+										} else {
+											clearHighlight();
+										}
+									});
+									row.addEventListener('click', () => {
+										if (pinnedRow) {
+											pinnedRow.style.backgroundColor = '';
+											pinnedRow.style.boxShadow = '';
+										}
+										pinnedRow = row;
+										row.style.backgroundColor = 'var(--muted)';
+										row.style.boxShadow = 'inset 3px 0 0 0 var(--primary)';
+										applyChunk(row);
+									});
+								});
+							</script>
+						}
+						{{ pages := pagination.CreatePagination(data.CurrentPage, data.TotalPages, 7) }}
+						if pages.TotalPages > 1 {
+							<div class="mt-6 flex justify-start">
+								@pagination.Pagination() {
+									@pagination.Content() {
+										@pagination.Item() {
+											@pagination.Previous(pagination.PreviousProps{
+												Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, pages.CurrentPage-1),
+												Disabled: !pages.HasPrevious,
+											})
+										}
+										for _, p := range pages.Pages {
+											@pagination.Item() {
+												@pagination.Link(pagination.LinkProps{
+													Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, p),
+													IsActive: p == pages.CurrentPage,
+												}) {
+													{ fmt.Sprintf("%d", p) }
+												}
+											}
+										}
+										@pagination.Item() {
+											@pagination.Next(pagination.NextProps{
+												Href:     fmt.Sprintf("?document_id=%s&page=%d", data.SelectedDocumentID, pages.CurrentPage+1),
+												Disabled: !pages.HasNext,
+											})
+										}
+									}
+								}
+							</div>
+						}
+					}
+				</div>
+				<div class="min-w-0 border-l pl-6 sticky top-6 self-start">
+					if data.PDFURL != "" {
+						<script type="module" src="/static/js/pdf-bbox-viewer.js"></script>
+						<div class="max-h-[85vh] overflow-auto rounded-md border">
+							<pdf-bbox-viewer id="chunk-pdf-viewer" url={ data.PDFURL } scale="1.1" page-number={ fmt.Sprintf("%d", data.CurrentPage) }></pdf-bbox-viewer>
+						</div>
+					} else {
+						<div class="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2 text-center">
+							<p class="text-sm">PDF preview unavailable for this file type.</p>
+						</div>
+					}
+				</div>
+			</div>
+		}
+	}
+}

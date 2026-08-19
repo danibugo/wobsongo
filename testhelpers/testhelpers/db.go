@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/db"
 	"github.com/kairosedubf/wobsongo/repo"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // SetupTestDB connects to the Postgres instance addressed by APP_DB_URI,

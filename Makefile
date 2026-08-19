@@ -6,7 +6,7 @@ check:
 	# @go tool swag init -q --output ./swagger --generalInfo ./internal/core/app.go
 	@go build -o ./tmp/out . && find tmp -name '*out' -print0 | xargs -0 ls -lhS
 	@golangci-lint run ./...
-	# @go tool sqlc diff
+	@go tool sqlc diff
 config:
 	@go run . -e .env config
 fmt:

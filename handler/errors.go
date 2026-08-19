@@ -7,6 +7,10 @@ import (
 	"github.com/kairosedubf/wobsongo/data"
 )
 
+// msgInvalidRequestBody is the public message returned when a handler fails
+// to bind/validate a request body.
+const msgInvalidRequestBody = "invalid request body"
+
 // errorMapping defines the HTTP status code and public message for a sentinel error.
 type errorMapping struct {
 	statusCode int

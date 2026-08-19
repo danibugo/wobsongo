@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/db"
+	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 )
 
@@ -92,6 +93,50 @@ func (r *AtomicKnowledgeRepo) ListNeedingEmbedding(
 		facts = append(facts, *toModelAtomicKnowledge(&rows[i]))
 	}
 	return facts, nil
+}
+
+// PaginateByDocumentID retrieves a paginated page of facts for a single
+// document, ordered most-recent first.
+func (r *AtomicKnowledgeRepo) PaginateByDocumentID(
+	ctx context.Context,
+	documentID uuid.UUID,
+	q data.SupportsPagination,
+) (*dto.PaginationResults[model.AtomicKnowledge], error) {
+	limit, offset := q.Limit(), q.Offset()
+
+	rows, err := r.q.PaginateAtomicKnowledgeByDocumentID(
+		ctx,
+		db.PaginateAtomicKnowledgeByDocumentIDParams{
+			DocumentID: documentID,
+			Limit:      limit,
+			Offset:     offset,
+		},
+	)
+	if err != nil {
+		return nil, mapPostgresError(err)
+	}
+
+	total, err := r.q.CountAtomicKnowledgeByDocumentID(ctx, documentID)
+	if err != nil {
+		return nil, mapPostgresError(err)
+	}
+
+	facts := make([]model.AtomicKnowledge, 0, len(rows))
+	for i := range rows {
+		facts = append(facts, *toModelAtomicKnowledge(&rows[i]))
+	}
+
+	page := int32(1)
+	if limit > 0 {
+		page = offset/limit + 1
+	}
+
+	return &dto.PaginationResults[model.AtomicKnowledge]{
+		Page:       int(page),
+		PerPage:    int(limit),
+		TotalItems: int(total),
+		Items:      facts,
+	}, nil
 }
 
 // UpdateEmbedding persists the embedding vector for a single fact.

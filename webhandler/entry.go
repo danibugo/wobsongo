@@ -3,8 +3,8 @@ package webhandler
 import (
 	"net/http"
 
-	"github.com/kairosedubf/wobsongo/config"
 	authpkg "github.com/kairosedubf/wobsongo/auth"
+	"github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/service"
 	"github.com/labstack/echo/v4"
@@ -12,7 +12,15 @@ import (
 
 // WebRepos holds the repo implementations for the HTML layer.
 type WebRepos struct {
-	UserRepo data.UserRepoer
+	UserRepo      data.UserRepoer
+	DocumentRepo  data.DocumentRepoer
+	RawStore      data.RawObjectStore
+	ChunkRepo     data.DocumentChunkRepoer
+	KnowledgeRepo data.AtomicKnowledgeRepoer
+	MediaProvider data.MediaUploadProvider
+	Embedder      data.Embedder
+	ClaimAnalyzer data.ClaimAnalyzer
+	ClaimJudge    data.ClaimJudge
 }
 
 // RegisterWebRoutes mounts all HTML routes onto the given Echo group.
@@ -40,4 +48,34 @@ func RegisterWebRoutes(
 
 	dash := NewDashboardHandler()
 	protected.GET("/dashboard", dash.dashboardPage)
+
+	documentSvc := service.NewDocumentService(repos.DocumentRepo)
+	docHandler := NewDocumentWebHandler(documentSvc, repos.RawStore)
+	protected.GET("/documents", docHandler.listPage)
+	protected.GET("/documents/new", docHandler.newPage)
+	protected.POST("/documents/new", docHandler.createPost)
+	protected.GET("/documents/:id/edit", docHandler.editPage)
+	protected.POST("/documents/:id/edit", docHandler.updatePost)
+	protected.POST("/documents/:id/delete", docHandler.deletePost)
+
+	chunkSvc := service.NewDocumentChunkService(repos.ChunkRepo)
+	mediaSvc := service.NewMediaService(repos.MediaProvider)
+	chunkHandler := NewDocumentChunkWebHandler(chunkSvc, documentSvc, mediaSvc)
+	protected.GET("/chunks", chunkHandler.listPage)
+
+	evidenceHandler := NewEvidenceWebHandler(chunkSvc, documentSvc, mediaSvc)
+	protected.GET("/evidence", evidenceHandler.viewPage)
+
+	knowledgeSvc := service.NewAtomicKnowledgeService(repos.KnowledgeRepo)
+	knowledgeHandler := NewAtomicKnowledgeWebHandler(knowledgeSvc, documentSvc)
+	protected.GET("/knowledge", knowledgeHandler.listPage)
+
+	ragSvc := service.NewRAGService(repos.ChunkRepo, repos.KnowledgeRepo, repos.Embedder)
+	retrievalHandler := NewRetrievalWebHandler(ragSvc, documentSvc, mediaSvc)
+	protected.GET("/retrieval", retrievalHandler.listPage)
+
+	claimSvc := service.NewClaimService(repos.ClaimAnalyzer, repos.ClaimJudge, ragSvc)
+	checkHandler := NewCheckWebHandler(claimSvc)
+	protected.GET("/check", checkHandler.formPage)
+	protected.POST("/check", checkHandler.checkPost)
 }

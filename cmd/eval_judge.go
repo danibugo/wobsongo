@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kairosedubf/wobsongo/external"
 	appconfig "github.com/kairosedubf/wobsongo/config"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/model"
 	"github.com/spf13/cobra"
 )
@@ -137,7 +137,7 @@ func evalAnalyzerFixture(
 ) (bool, string) {
 	analysis, err := client.Analyze(ctx, fixture.Message)
 	if err != nil {
-		return false, fmt.Sprintf("analyze call failed: %s", err.Error())
+		return false, "analyze call failed: " + err.Error()
 	}
 	if analysis.InScope != fixture.ExpectedInScope {
 		return false, fmt.Sprintf(
@@ -159,7 +159,7 @@ func evalAnalyzerFixture(
 func evalJudgeFixture(
 	ctx context.Context,
 	client *external.JudgeClient,
-	fixture judgeEvalFixture,
+	fixture judgeEvalFixture, //nolint:gocritic // negligible perf impact at this call frequency; not worth the pointer-indirection tradeoff
 ) (bool, string) {
 	evidence := make([]data.JudgeEvidence, len(fixture.Evidence))
 	for i, e := range fixture.Evidence {
@@ -173,7 +173,7 @@ func evalJudgeFixture(
 
 	verdict, err := client.Judge(ctx, &data.JudgeRequest{Claim: fixture.Claim, Evidence: evidence})
 	if err != nil {
-		return false, fmt.Sprintf("judge call failed: %s", err.Error())
+		return false, "judge call failed: " + err.Error()
 	}
 
 	expectedVerdict, err := model.ParseVerdict(fixture.ExpectedVerdict)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/kairosedubf/wobsongo/data"
+	"github.com/kairosedubf/wobsongo/dto"
 	"github.com/kairosedubf/wobsongo/model"
 	"sync"
 )
@@ -32,6 +33,9 @@ var _ data.AtomicKnowledgeRepoer = &AtomicKnowledgeRepoerMock{}
 //			},
 //			MarkChunkKnowledgeExtractedFunc: func(ctx context.Context, chunkID uuid.UUID) error {
 //				panic("mock out the MarkChunkKnowledgeExtracted method")
+//			},
+//			PaginateByDocumentIDFunc: func(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.AtomicKnowledge], error) {
+//				panic("mock out the PaginateByDocumentID method")
 //			},
 //			SearchByEmbeddingFunc: func(ctx context.Context, queryVector []float32, limit int) ([]data.ScoredResult[model.AtomicKnowledge], error) {
 //				panic("mock out the SearchByEmbedding method")
@@ -66,6 +70,9 @@ type AtomicKnowledgeRepoerMock struct {
 
 	// MarkChunkKnowledgeExtractedFunc mocks the MarkChunkKnowledgeExtracted method.
 	MarkChunkKnowledgeExtractedFunc func(ctx context.Context, chunkID uuid.UUID) error
+
+	// PaginateByDocumentIDFunc mocks the PaginateByDocumentID method.
+	PaginateByDocumentIDFunc func(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.AtomicKnowledge], error)
 
 	// SearchByEmbeddingFunc mocks the SearchByEmbedding method.
 	SearchByEmbeddingFunc func(ctx context.Context, queryVector []float32, limit int) ([]data.ScoredResult[model.AtomicKnowledge], error)
@@ -111,6 +118,15 @@ type AtomicKnowledgeRepoerMock struct {
 			Ctx context.Context
 			// ChunkID is the chunkID argument value.
 			ChunkID uuid.UUID
+		}
+		// PaginateByDocumentID holds details about calls to the PaginateByDocumentID method.
+		PaginateByDocumentID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DocumentID is the documentID argument value.
+			DocumentID uuid.UUID
+			// Q is the q argument value.
+			Q data.SupportsPagination
 		}
 		// SearchByEmbedding holds details about calls to the SearchByEmbedding method.
 		SearchByEmbedding []struct {
@@ -160,6 +176,7 @@ type AtomicKnowledgeRepoerMock struct {
 	lockGetByID                     sync.RWMutex
 	lockListNeedingEmbedding        sync.RWMutex
 	lockMarkChunkKnowledgeExtracted sync.RWMutex
+	lockPaginateByDocumentID        sync.RWMutex
 	lockSearchByEmbedding           sync.RWMutex
 	lockSearchByFullText            sync.RWMutex
 	lockSearchBySimilarity          sync.RWMutex
@@ -308,6 +325,46 @@ func (mock *AtomicKnowledgeRepoerMock) MarkChunkKnowledgeExtractedCalls() []stru
 	mock.lockMarkChunkKnowledgeExtracted.RLock()
 	calls = mock.calls.MarkChunkKnowledgeExtracted
 	mock.lockMarkChunkKnowledgeExtracted.RUnlock()
+	return calls
+}
+
+// PaginateByDocumentID calls PaginateByDocumentIDFunc.
+func (mock *AtomicKnowledgeRepoerMock) PaginateByDocumentID(ctx context.Context, documentID uuid.UUID, q data.SupportsPagination) (*dto.PaginationResults[model.AtomicKnowledge], error) {
+	if mock.PaginateByDocumentIDFunc == nil {
+		panic("AtomicKnowledgeRepoerMock.PaginateByDocumentIDFunc: method is nil but AtomicKnowledgeRepoer.PaginateByDocumentID was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		DocumentID uuid.UUID
+		Q          data.SupportsPagination
+	}{
+		Ctx:        ctx,
+		DocumentID: documentID,
+		Q:          q,
+	}
+	mock.lockPaginateByDocumentID.Lock()
+	mock.calls.PaginateByDocumentID = append(mock.calls.PaginateByDocumentID, callInfo)
+	mock.lockPaginateByDocumentID.Unlock()
+	return mock.PaginateByDocumentIDFunc(ctx, documentID, q)
+}
+
+// PaginateByDocumentIDCalls gets all the calls that were made to PaginateByDocumentID.
+// Check the length with:
+//
+//	len(mockedAtomicKnowledgeRepoer.PaginateByDocumentIDCalls())
+func (mock *AtomicKnowledgeRepoerMock) PaginateByDocumentIDCalls() []struct {
+	Ctx        context.Context
+	DocumentID uuid.UUID
+	Q          data.SupportsPagination
+} {
+	var calls []struct {
+		Ctx        context.Context
+		DocumentID uuid.UUID
+		Q          data.SupportsPagination
+	}
+	mock.lockPaginateByDocumentID.RLock()
+	calls = mock.calls.PaginateByDocumentID
+	mock.lockPaginateByDocumentID.RUnlock()
 	return calls
 }
 

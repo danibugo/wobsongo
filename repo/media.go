@@ -14,6 +14,7 @@ import (
 	"github.com/kairosedubf/wobsongo/data"
 	"github.com/kairosedubf/wobsongo/validation"
 	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/cors"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/patrickmn/go-cache"
 )
@@ -78,6 +79,38 @@ func NewS3Provider(ctx context.Context, config *appconfig.S3Config) (*S3Provider
 		logger.Info(
 			"Bucket already exists",
 			"bucket_name", config.BucketName,
+		)
+	}
+
+	// Presigned GET URLs (e.g. for the PDF viewer) are fetched directly by
+	// browser JS (pdf.js range requests), which the browser treats as a
+	// cross-origin request against this bucket's host — without CORS the
+	// fetch is blocked outright. AllowedOrigin "*" is safe here: the
+	// presigned URL's signature/expiry is the real access-control boundary,
+	// not the requesting origin. Idempotent, so safe to call every startup.
+	corsConfig := &cors.Config{
+		CORSRules: []cors.Rule{
+			{
+				AllowedMethod: []string{"GET", "HEAD"},
+				AllowedOrigin: []string{"*"},
+				AllowedHeader: []string{"Range", "If-None-Match", "If-Modified-Since"},
+				ExposeHeader:  []string{"ETag", "Content-Range", "Content-Length", "Accept-Ranges"},
+			},
+		},
+	}
+	// Best-effort: some S3-compatible servers (confirmed: this deployment's
+	// MinIO, RELEASE.2024-12-18) don't implement PutBucketCors at all, even
+	// though the client SDK exposes the call — failing startup over that
+	// would take document upload/download down along with it, for a feature
+	// (the PDF viewer's direct-to-storage fetch) that isn't essential to core
+	// operation.
+	if err := client.SetBucketCors(ctx, config.BucketName, corsConfig); err != nil {
+		logger.Warn(
+			"failed to set bucket CORS — browser-side fetches against presigned URLs (e.g. the PDF viewer) may be blocked by CORS until this is resolved",
+			"bucket_name",
+			config.BucketName,
+			"error",
+			err,
 		)
 	}
 
