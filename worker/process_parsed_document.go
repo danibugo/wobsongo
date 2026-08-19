@@ -33,6 +33,8 @@ var noiseLayoutTypes = map[model.LayoutType]bool{
 	model.LayoutTypeDocumentIndex: true,
 }
 
+const shortSectionHeaderMaxWords = 3
+
 var emptyTextNoiseLayoutTypes = map[model.LayoutType]bool{
 	model.LayoutTypeParagraph:     true,
 	model.LayoutTypeText:          true,
@@ -317,6 +319,11 @@ func filterNoiseChunks(chunks []model.ParsedChunk) (kept []model.ParsedChunk, dr
 			continue
 		}
 		if emptyTextNoiseLayoutTypes[chunk.LayoutType] && strings.TrimSpace(chunk.Text) == "" {
+			dropped++
+			continue
+		}
+		if chunk.LayoutType == model.LayoutTypeSectionHeader &&
+			len(strings.Fields(chunk.Text)) <= shortSectionHeaderMaxWords {
 			dropped++
 			continue
 		}

@@ -122,7 +122,7 @@ func TestFilterNoiseChunks_DoesNotMergeSectionHeaderWithOtherLayouts(t *testing.
 	layouts := []model.LayoutType{model.LayoutTypeParagraph, model.LayoutTypeTable, model.LayoutTypeCaption}
 	for _, layout := range layouts {
 		chunks := []model.ParsedChunk{
-			{Text: "Section title", LayoutType: model.LayoutTypeSectionHeader},
+			{Text: "A longer section title", LayoutType: model.LayoutTypeSectionHeader},
 			{Text: "Content", LayoutType: layout},
 		}
 		kept, dropped := filterNoiseChunks(chunks)
@@ -132,9 +132,28 @@ func TestFilterNoiseChunks_DoesNotMergeSectionHeaderWithOtherLayouts(t *testing.
 		if len(kept) != 2 {
 			t.Fatalf("layout %s: expected 2 kept chunks, got %d", layout, len(kept))
 		}
-		if kept[0].Text != "Section title" || kept[1].Text != "Content" {
+		if kept[0].Text != "A longer section title" || kept[1].Text != "Content" {
 			t.Errorf("layout %s: section header was merged unexpectedly: %+v", layout, kept)
 		}
+	}
+}
+
+func TestFilterNoiseChunks_DropsShortStandaloneSectionHeaders(t *testing.T) {
+	chunks := []model.ParsedChunk{
+		{Text: "Methods", LayoutType: model.LayoutTypeSectionHeader},
+		{Text: "Risk factors", LayoutType: model.LayoutTypeSectionHeader},
+		{Text: "Clinical treatment recommendations", LayoutType: model.LayoutTypeSectionHeader},
+		{Text: "A much longer standalone section header", LayoutType: model.LayoutTypeSectionHeader},
+	}
+	kept, dropped := filterNoiseChunks(chunks)
+	if dropped != 3 {
+		t.Fatalf("expected 3 dropped chunks, got %d", dropped)
+	}
+	if len(kept) != 1 {
+		t.Fatalf("expected 1 kept chunk, got %d", len(kept))
+	}
+	if kept[0].Text != "A much longer standalone section header" {
+		t.Errorf("unexpected kept header: %q", kept[0].Text)
 	}
 }
 

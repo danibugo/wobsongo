@@ -68,6 +68,8 @@ func TestGenerateParsedDocumentReport(t *testing.T) {
 			row.Status, row.StatusClass, row.Reason = "DROP", "drop", "layout type is configured as noise"
 		} else if emptyTextNoiseLayoutTypes[chunk.LayoutType] && strings.TrimSpace(chunk.Text) == "" {
 			row.Status, row.StatusClass, row.Reason = "DROP", "drop", "text is empty for a text layout"
+		} else if chunk.LayoutType == model.LayoutTypeSectionHeader && len(strings.Fields(chunk.Text)) <= shortSectionHeaderMaxWords {
+			row.Status, row.StatusClass, row.Reason = "DROP", "drop", "standalone section header has at most three words"
 		} else {
 			row.Status, row.StatusClass, row.KeptIndex = "KEEP", "keep", keptIndex
 			keptIndex++
