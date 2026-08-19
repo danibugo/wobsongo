@@ -35,6 +35,7 @@ var noiseLayoutTypes = map[model.LayoutType]bool{
 
 var emptyTextNoiseLayoutTypes = map[model.LayoutType]bool{
 	model.LayoutTypeParagraph:     true,
+	model.LayoutTypeText:          true,
 	model.LayoutTypeTitle:         true,
 	model.LayoutTypeSectionHeader: true,
 	model.LayoutTypeListItem:      true,
@@ -285,8 +286,32 @@ func (w *ProcessParsedDocumentWorker) uploadImage(
 // (page headers/footers, table of contents), returning the kept chunks and
 // a count of how many were dropped.
 func filterNoiseChunks(chunks []model.ParsedChunk) (kept []model.ParsedChunk, dropped int) {
-	for i := range chunks {
+	for i := 0; i < len(chunks); i++ {
 		chunk := chunks[i]
+		if chunk.LayoutType == model.LayoutTypeSectionHeader &&
+			strings.TrimSpace(chunk.Text) != "" &&
+			i+1 < len(chunks) &&
+			chunks[i+1].LayoutType == model.LayoutTypeListItem {
+			headerText := chunk.Text
+			for i+1 < len(chunks) && chunks[i+1].LayoutType == model.LayoutTypeListItem {
+				merged := chunks[i+1]
+				merged.Text = headerText + "\n" + merged.Text
+				kept = append(kept, merged)
+				i++
+			}
+			continue
+		}
+		if chunk.LayoutType == model.LayoutTypeSectionHeader &&
+			strings.TrimSpace(chunk.Text) != "" &&
+			i+1 < len(chunks) &&
+			chunks[i+1].LayoutType == model.LayoutTypeText &&
+			strings.TrimSpace(chunks[i+1].Text) != "" {
+			merged := chunks[i+1]
+			merged.Text = chunk.Text + "\n" + merged.Text
+			kept = append(kept, merged)
+			i++
+			continue
+		}
 		if noiseLayoutTypes[chunk.LayoutType] {
 			dropped++
 			continue
