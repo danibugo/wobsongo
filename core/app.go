@@ -18,8 +18,11 @@ import (
 )
 
 const (
-	ReadTimeout  = 5 * time.Second
-	WriteTimeout = 10 * time.Second
+	ReadTimeout = 5 * time.Second
+	// WriteTimeout is generous because embedding/VLM/extraction calls can hit
+	// a serverless provider's cold start (several seconds) on top of normal
+	// request latency.
+	WriteTimeout = 60 * time.Second
 )
 
 type App struct {
