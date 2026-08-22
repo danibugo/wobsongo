@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"flag"
 	"html/template"
 	"os"
 	"path/filepath"
@@ -11,10 +12,12 @@ import (
 	"github.com/kairosedubf/wobsongo/model"
 )
 
+var reportFixture = flag.String("fixture", "parsed_document.json", "JSON fixture in worker/testdata to include in the HTML report")
+
 // Run explicitly with:
 // go test ./worker -run '^TestGenerateParsedDocumentReport$' -count=1 -v
 func TestGenerateParsedDocumentReport(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("testdata", "parsed_document.json"))
+	raw, err := os.ReadFile(filepath.Join("testdata", *reportFixture))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
