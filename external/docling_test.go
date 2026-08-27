@@ -3,14 +3,18 @@ package external_test
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/kairosedubf/wobsongo/external"
 	"github.com/kairosedubf/wobsongo/model"
 )
+
+var tableTextFixture = flag.String("fixture", "../worker/testdata/table_documnet.json", "Docling JSON fixture whose table texts should be printed")
 
 const cannedDoclingResponse = `{
 	"status": "success",
@@ -123,6 +127,11 @@ func TestDoclingClient_FetchRawFromURL_And_ParseRaw_Success(t *testing.T) {
 	if !sawTable {
 		t.Error("expected the table chunk to be present")
 	}
+	for _, c := range result.Chunks {
+		if c.LayoutType == model.LayoutTypeTable && c.Text != "Table:" {
+			t.Errorf("expected table text %q, got %q", "Table:", c.Text)
+		}
+	}
 	if picture == nil {
 		t.Fatal("expected the picture chunk to be present")
 	}
@@ -233,5 +242,56 @@ func TestDoclingClient_FetchRawFromURL_NonOKStatus(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "docling exploded") {
 		t.Errorf("expected error to include response body, got: %v", err)
+	}
+}
+
+func TestParseRaw_TableTextFromFixture(t *testing.T) {
+	raw, err := os.ReadFile("../worker/testdata/table_documnet.json")
+	if err != nil {
+		t.Fatalf("read table fixture: %v", err)
+	}
+
+	result, err := external.ParseRaw(raw)
+	if err != nil {
+		t.Fatalf("parse table fixture: %v", err)
+	}
+
+	for _, chunk := range result.Chunks {
+		if chunk.LayoutType == model.LayoutTypeTable {
+			expected := "Table:\n\n- Row 2: Comorbidit\u00e9: Varicoc\u00e8le; Rep\u00e8res pour les parents:"
+			if !strings.HasPrefix(chunk.Text, expected) {
+				t.Fatalf("unexpected table text prefix:\n%s", chunk.Text)
+			}
+			if !strings.Contains(chunk.Text, "- Row 6: Comorbidit\u00e9: Acn\u00e9 pubertaire;") {
+				t.Fatalf("expected final table row in text:\n%s", chunk.Text)
+			}
+			return
+		}
+	}
+
+	t.Fatal("table chunk not found")
+}
+
+func TestPrintTableTextsFromFixture(t *testing.T) {
+	raw, err := os.ReadFile(*tableTextFixture)
+	if err != nil {
+		t.Fatalf("read table fixture: %v", err)
+	}
+
+	result, err := external.ParseRaw(raw)
+	if err != nil {
+		t.Fatalf("parse table fixture: %v", err)
+	}
+
+	tableCount := 0
+	for _, chunk := range result.Chunks {
+		if chunk.LayoutType != model.LayoutTypeTable {
+			continue
+		}
+		tableCount++
+		t.Logf("table %d:\n%s", tableCount, chunk.Text)
+	}
+	if tableCount == 0 {
+		t.Fatal("no table chunks found")
 	}
 }
