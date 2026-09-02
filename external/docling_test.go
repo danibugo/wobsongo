@@ -131,6 +131,9 @@ func TestDoclingClient_FetchRawFromURL_And_ParseRaw_Success(t *testing.T) {
 		if c.LayoutType == model.LayoutTypeTable && c.Text != "Table:" {
 			t.Errorf("expected table text %q, got %q", "Table:", c.Text)
 		}
+		if c.LayoutType == model.LayoutTypeTable && c.TableMarkdown != "" {
+			t.Errorf("expected empty Markdown for table without cells, got %q", c.TableMarkdown)
+		}
 	}
 	if picture == nil {
 		t.Fatal("expected the picture chunk to be present")
@@ -265,6 +268,12 @@ func TestParseRaw_TableTextFromFixture(t *testing.T) {
 			if !strings.Contains(chunk.Text, "- Row 6: Comorbidit\u00e9: Acn\u00e9 pubertaire;") {
 				t.Fatalf("expected final table row in text:\n%s", chunk.Text)
 			}
+			if !strings.HasPrefix(chunk.TableMarkdown, "| Comorbidité | Repères pour les parents |") {
+				t.Fatalf("unexpected table Markdown:\n%s", chunk.TableMarkdown)
+			}
+			if !strings.Contains(chunk.TableMarkdown, "| Acné pubertaire |") {
+				t.Fatalf("expected final table row in Markdown:\n%s", chunk.TableMarkdown)
+			}
 			return
 		}
 	}
@@ -289,7 +298,7 @@ func TestPrintTableTextsFromFixture(t *testing.T) {
 			continue
 		}
 		tableCount++
-		t.Logf("table %d:\n%s", tableCount, chunk.Text)
+		t.Logf("table %d Markdown:\n%s", tableCount, chunk.TableMarkdown)
 	}
 	if tableCount == 0 {
 		t.Fatal("no table chunks found")

@@ -176,6 +176,55 @@ func tableToText(table doclingTableItem) string {
 	return b.String()
 }
 
+func tableToMarkdown(table doclingTableItem) string {
+	rows := make(map[int][]doclingTableCell)
+	maxColumn := 0
+	for _, cell := range table.Data.TableCells {
+		rows[cell.StartRowOffsetIdx] = append(rows[cell.StartRowOffsetIdx], cell)
+		maxColumn = max(maxColumn, cell.StartColOffsetIdx)
+	}
+	rowIndexes := make([]int, 0, len(rows))
+	for row := range rows {
+		rowIndexes = append(rowIndexes, row)
+	}
+	sort.Ints(rowIndexes)
+	if len(rowIndexes) == 0 {
+		return ""
+	}
+
+	columns := maxColumn + 1
+	var b strings.Builder
+	writeRow := func(rowIndex int) {
+		cells := make(map[int]string)
+		for _, cell := range rows[rowIndex] {
+			cells[cell.StartColOffsetIdx] = strings.TrimSpace(cell.Text)
+		}
+		b.WriteString("| ")
+		for column := 0; column < columns; column++ {
+			if column > 0 {
+				b.WriteString(" | ")
+			}
+			value := strings.ReplaceAll(cells[column], "|", "\\|")
+			b.WriteString(strings.ReplaceAll(value, "\n", " "))
+		}
+		b.WriteString(" |\n")
+	}
+
+	writeRow(rowIndexes[0])
+	b.WriteString("| ")
+	for column := 0; column < columns; column++ {
+		if column > 0 {
+			b.WriteString(" | ")
+		}
+		b.WriteString("---")
+	}
+	b.WriteString(" |\n")
+	for _, rowIndex := range rowIndexes[1:] {
+		writeRow(rowIndex)
+	}
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
 type doclingPictureItem struct {
 	Label string        `json:"label"`
 	Prov  []doclingProv `json:"prov"`
@@ -360,10 +409,11 @@ func mapDoclingDocument(doc *doclingDocument) *data.ProcessedDocument {
 		page, bbox := firstProv(t.Prov)
 		maxPage = max(maxPage, page)
 		chunks = append(chunks, model.ParsedChunk{
-			Text:        tableToText(t),
-			Page:        page,
-			LayoutType:  model.LayoutType(t.Label),
-			BoundingBox: bbox,
+			Text:          tableToText(t),
+			TableMarkdown: tableToMarkdown(t),
+			Page:          page,
+			LayoutType:    model.LayoutType(t.Label),
+			BoundingBox:   bbox,
 		})
 	}
 
